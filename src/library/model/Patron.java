@@ -1,5 +1,8 @@
 package library.model;
 
+import data.Database;
+import java.util.List;
+
 /** Library patron aligned with the {@code patrons} table (set {@code id} after insert). */
 public class Patron {
 
@@ -42,5 +45,10 @@ public class Patron {
     @Override
     public String toString() {
         return "Patron{id=" + id + ", name='" + name + "', email='" + email + "', type=" + patronType + "}";
+    }
+
+    /** Convenience loader so the class can request its own DB records. */
+    public static List<Patron> fetchAllFromDatabase() {
+        return Database.getAllPatrons();
     }
 }

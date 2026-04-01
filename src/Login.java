@@ -7,7 +7,12 @@ public final class Login {
     private Login() {
     }
 
-    public static void prompt(Scanner scn) {
+    private static void pressEnterToContinue(Scanner scn) {
+        System.out.print("Press Enter to continue...");
+        scn.nextLine();
+    }
+
+    public static boolean prompt(Scanner scn) {
         System.out.print("Email or username: ");
         String identifier = scn.nextLine();
         System.out.print("Password: ");
@@ -15,8 +20,11 @@ public final class Login {
 
         if (Database.authenticate(identifier, password)) {
             System.out.println("Login successful.");
+            return true;
         } else {
             System.out.println("Wrong email/username or password.");
+            pressEnterToContinue(scn);
+            return false;
         }
     }
 }
