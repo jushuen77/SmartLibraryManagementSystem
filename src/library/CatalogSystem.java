@@ -7,7 +7,10 @@ import java.util.List;
 import java.util.Map;
 import library.model.LibraryItem;
 
-/** Organizes and searches the catalog by genre, author, and ISBN. */
+/*
+ * Thin helper over Database.getAllCatalogItems() — groups/sorts in memory for the browse + search menus.
+ * No SQL here; data comes from Database.getAllCatalogItems() so catalog queries stay in one place.
+ */
 public final class CatalogSystem {
 
     private CatalogSystem() {

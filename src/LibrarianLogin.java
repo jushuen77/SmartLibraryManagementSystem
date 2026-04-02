@@ -1,6 +1,10 @@
 import java.util.Scanner;
+import data.ConsoleUi;
 
-/** Simple staff login for librarian operations. */
+/*
+ * Simple staff check before opening the librarian portal. Credentials are hardcoded for local/demo use only.
+ * Replace with proper authentication for any real deployment.
+ */
 public final class LibrarianLogin {
 
     private static final String STAFF_USERNAME = "librarian";
@@ -10,16 +14,17 @@ public final class LibrarianLogin {
     }
 
     public static boolean prompt(Scanner scn) {
-        System.out.print("Staff username: ");
+        ConsoleUi.sectionTitle("Staff login");
+        ConsoleUi.fieldPrompt("Username");
         String username = scn.nextLine();
-        System.out.print("Staff password: ");
+        ConsoleUi.fieldPrompt("Password");
         String password = scn.nextLine();
 
         if (STAFF_USERNAME.equals(username) && STAFF_PASSWORD.equals(password)) {
-            System.out.println("Staff login successful.");
+            ConsoleUi.ok("Staff login successful.");
             return true;
         }
-        System.out.println("Invalid staff credentials.");
+        ConsoleUi.warn("Invalid staff credentials.");
         return false;
     }
 }

@@ -1,4 +1,8 @@
-//just some sample of books, ebooks, journals and etc (Something like a database for the materials)
+/*
+ * Fake starter data so the app isn't empty on first run — Harry Potter vibes + a few tech books.
+ * Database.seedSampleDataIfEmpty() uses this data; digital items include short reader excerpts for the e-book viewer.
+ * Edit titles or ISBNs here to change the default catalog.
+ */
 package library;
 
 import library.model.Book;
@@ -9,7 +13,6 @@ import library.model.PatronType;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Example patrons and titles (Harry Potter and others) for seeding the database. */
 public final class SampleCatalog {
 
     private SampleCatalog() {
@@ -64,11 +67,84 @@ public final class SampleCatalog {
 
     public static List<DigitalResource> sampleDigitalResources() {
         List<DigitalResource> list = new ArrayList<>();
-        list.add(new DigitalResource("Harry Potter and the Prisoner of Azkaban (e-book)", "J.K. Rowling", "9781781100502", "Fantasy"));
-        list.add(new DigitalResource("Harry Potter and the Order of the Phoenix (e-book)", "J.K. Rowling", "9781781101353", "Fantasy"));
-        list.add(new DigitalResource("Project Hail Mary", "Andy Weir", "9780593135204", "Science fiction"));
-        list.add(new DigitalResource("Clean Code", "Robert C. Martin", "9780132350884", "Technology"));
-        list.add(new DigitalResource("Effective Java", "Joshua Bloch", "9780134685991", "Technology"));
+        DigitalResource hp3 = new DigitalResource(
+                "Harry Potter and the Prisoner of Azkaban (e-book)", "J.K. Rowling", "9781781100502", "Fantasy");
+        hp3.setReaderContent(sampleExcerptHpAzkaban());
+        list.add(hp3);
+        DigitalResource hp5 = new DigitalResource(
+                "Harry Potter and the Order of the Phoenix (e-book)", "J.K. Rowling", "9781781101353", "Fantasy");
+        hp5.setReaderContent(sampleExcerptHpPhoenix());
+        list.add(hp5);
+        DigitalResource phm = new DigitalResource("Project Hail Mary", "Andy Weir", "9780593135204", "Science fiction");
+        phm.setReaderContent(sampleExcerptProjectHailMary());
+        list.add(phm);
+        DigitalResource clean = new DigitalResource("Clean Code", "Robert C. Martin", "9780132350884", "Technology");
+        clean.setReaderContent(sampleExcerptCleanCode());
+        list.add(clean);
+        DigitalResource ej = new DigitalResource("Effective Java", "Joshua Bloch", "9780134685991", "Technology");
+        ej.setReaderContent(sampleExcerptEffectiveJava());
+        list.add(ej);
         return list;
+    }
+
+    private static String sampleExcerptHpAzkaban() {
+        return """
+                --- E-BOOK READER (excerpt) ---
+                Chapter 1: Owl Post
+
+                Harry Potter was a highly unusual boy in many ways. For one thing, he hated the summer holidays more than any other time of year. For another, he really wanted to do his homework, but was forced to do it in secret, in the dead of night...
+
+                He missed the castle, with its secret passageways and ghosts, his classes, mail arriving by owl, eating in the Great Hall, sleeping in his four-poster bed in the tower dormitory, visiting the gamekeeper, Hagrid, in his cabin next to the Forbidden Forest...
+
+                [Integrated reader — full text would load from library digital lending.]
+                """.strip();
+    }
+
+    private static String sampleExcerptHpPhoenix() {
+        return """
+                --- E-BOOK READER (excerpt) ---
+                The hottest day of the summer so far was drawing to a close and a drowsy silence lay over the large, square houses of Privet Drive...
+
+                Harry Potter was lying flat on his back, breathing hard as though he had been running. He had awoken with a start, his scar prickling...
+
+                [Integrated reader — resume reading syncs across devices in a full deployment.]
+                """.strip();
+    }
+
+    private static String sampleExcerptProjectHailMary() {
+        return """
+                --- E-BOOK READER (excerpt) ---
+                I'm pretty much fucked.
+
+                That's my considered opinion.
+
+                Fucked.
+
+                Six days ago I was in space. Now I'm alone on a ship I don't know how to fly, with no crew, and dwindling supplies...
+
+                [Integrated reader — DRM and loan expiry handled by the library platform.]
+                """.strip();
+    }
+
+    private static String sampleExcerptCleanCode() {
+        return """
+                --- E-BOOK READER (excerpt) ---
+                You are reading this book for two reasons. First, you are a programmer. Second, you want to be a better programmer...
+
+                The single responsibility principle states that a class should have only one reason to change...
+
+                [Integrated reader — diagrams and code samples render in the full viewer.]
+                """.strip();
+    }
+
+    private static String sampleExcerptEffectiveJava() {
+        return """
+                --- E-BOOK READER (excerpt) ---
+                This book is designed to help you make the most effective use of the Java programming language and its fundamental libraries...
+
+                Consider static factory methods instead of constructors when you need more flexible object creation...
+
+                [Integrated reader — search and annotations supported in production.]
+                """.strip();
     }
 }

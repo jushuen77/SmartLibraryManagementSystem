@@ -16,11 +16,20 @@ import library.model.LibraryItem;
 import library.model.Patron;
 import library.model.PatronType;
 
+/*
+ * Central place for SQLite access: schema, seeding, CRUD, catalog loading, loans/fines, and study-room booking.
+ * Rough order: setup → seed data → patrons/items → loaders → borrow/return/fines → study rooms.
+ * If inserts fail at runtime, check foreign keys and UNIQUE constraints first.
+ * (This class is long. Grab coffee before scrolling to the bottom. -- jushuen)
+ */
 public class Database {
+    // users.db lives next to wherever you run java — if you lose it, you did not lose the code, only your fines history
     private static final String url = "jdbc:sqlite:users.db";
-    /** Loan length in days (used when borrowing). */
+
+    /** Default loan length (days); real per-book rules use the row's loan_duration_days when borrowing. */
     public static final int LOAN_DAYS = 14;
 
+    // Opens the db file; PRAGMA foreign_keys = ON so SQLite actually enforces "this patron id exists, right?"
     private static Connection getConnection() throws SQLException {
         Connection conn = DriverManager.getConnection(url);
         try (Statement st = conn.createStatement()) {
@@ -29,8 +38,13 @@ public class Database {
         return conn;
     }
 
-    /** Creates users, patrons, items, loans (safe to run more than once). */
+    /**
+     * Bootstraps every table and index. IF NOT EXISTS allows safe runs on every startup without dropping existing data.
+     * After DDL we seed empty tables and backfill optional columns (reader text, etc.).
+     * Think of it as moving day: we only unpack boxes if the shelves are empty.
+     */
     public static void createTable() {
+        // --- Who are you? (accounts + patrons) ---
         String usersTable = """
                 CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,6 +63,7 @@ public class Database {
                 );
                 """;
 
+        // The actual stuff on shelves (and some pretend shelves for digital rows)
         String itemsTable = """
                 CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -64,6 +79,7 @@ public class Database {
                 );
                 """;
 
+        // Someone walked out with a book; return_date null = "they still have it (hopefully)"
         String loansTable = """
                 CREATE TABLE IF NOT EXISTS loans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -75,6 +91,7 @@ public class Database {
                 );
                 """;
 
+        // "Save my spot" when the only copy is out — logic lives in addBookReservation(), not in the table name
         String reservationsTable = """
                 CREATE TABLE IF NOT EXISTS book_reservations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -86,6 +103,7 @@ public class Database {
                 );
                 """;
 
+        // You cannot loan the same physical copy to two people unless physics breaks. SQLite agrees.
         String activeLoanIndex = """
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_loans_one_active_per_item
                 ON loans(item_id) WHERE return_date IS NULL;
@@ -96,23 +114,71 @@ public class Database {
                 ON book_reservations(item_id, requester_email) WHERE status = 'PENDING';
                 """;
 
+        // Where polite reminders become numbers with dollar signs
+        String finesTable = """
+                CREATE TABLE IF NOT EXISTS fines (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                patron_id INTEGER NOT NULL REFERENCES patrons(id),
+                loan_id INTEGER NOT NULL REFERENCES loans(id),
+                item_id INTEGER NOT NULL REFERENCES items(id),
+                amount REAL NOT NULL,
+                amount_paid REAL NOT NULL DEFAULT 0,
+                recorded_date TEXT NOT NULL,
+                description TEXT
+                );
+                """;
+
+        // Optional: fight over chairs in a civilized way (one booking per room/slot/day)
+        String studyRoomsTable = """
+                CREATE TABLE IF NOT EXISTS study_rooms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                capacity INTEGER NOT NULL DEFAULT 4
+                );
+                """;
+
+        String studyBookingsTable = """
+                CREATE TABLE IF NOT EXISTS study_room_bookings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                room_id INTEGER NOT NULL REFERENCES study_rooms(id),
+                patron_email TEXT NOT NULL,
+                booking_date TEXT NOT NULL,
+                slot_label TEXT NOT NULL,
+                created_date TEXT NOT NULL,
+                UNIQUE(room_id, booking_date, slot_label)
+                );
+                """;
+
         try (Connection conn = getConnection();
                 Statement stmt = conn.createStatement()) {
             stmt.execute(usersTable);
             stmt.execute(patronsTable);
             stmt.execute(itemsTable);
             ensureItemsPolicyColumns(stmt);
+            ensureItemsReaderContentColumn(stmt);
             stmt.execute(loansTable);
             stmt.execute(reservationsTable);
+            stmt.execute(finesTable);
+            stmt.execute(studyRoomsTable);
+            stmt.execute(studyBookingsTable);
             stmt.execute(activeLoanIndex);
             stmt.execute(activeReservationIndex);
-            System.out.println("Database tables ready (users, patrons, items, loans, reservations).");
+            ConsoleUi.muted("Database ready: users, patrons, items, loans, reservations, fines, study rooms.");
             seedSampleDataIfEmpty();
+            seedStudyRoomsIfEmpty();
+            backfillDigitalReaderContentFromSamples();
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
+    /** Library opens at nine-ish; do not invent "25:00-26:00" or the booking code will judge you. */
+    public static final String[] STUDY_TIME_SLOTS = {
+            "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
+            "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"
+    };
+
+    // Gentle migrations: if someone's DB predates a column, we ALTER; if not, we skip and nobody cries
     private static void ensureItemsPolicyColumns(Statement stmt) throws SQLException {
         if (!hasColumn("items", "loan_duration_days")) {
             stmt.execute("ALTER TABLE items ADD COLUMN loan_duration_days INTEGER NOT NULL DEFAULT 14");
@@ -125,6 +191,14 @@ public class Database {
         }
     }
 
+    // So digital rows can smuggle a pretend chapter inside the database for the console reader
+    private static void ensureItemsReaderContentColumn(Statement stmt) throws SQLException {
+        if (!hasColumn("items", "reader_content")) {
+            stmt.execute("ALTER TABLE items ADD COLUMN reader_content TEXT");
+        }
+    }
+
+    // introspect sqlite schema — used so we don't run ALTER twice
     private static boolean hasColumn(String table, String column) throws SQLException {
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement("PRAGMA table_info(" + table + ")");
@@ -169,7 +243,62 @@ public class Database {
                 for (DigitalResource d : SampleCatalog.sampleDigitalResources()) {
                     saveItem(d);
                 }
-                System.out.println("Loaded sample books, journals, digital resources, and patrons into the database.");
+                ConsoleUi.muted("Sample catalog and patrons loaded.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // First launch: we invent four rooms. After that, your furniture is your problem.
+    private static void seedStudyRoomsIfEmpty() {
+        String countSql = "SELECT COUNT(*) FROM study_rooms";
+        String insertSql = "INSERT INTO study_rooms(name, capacity) VALUES(?, ?)";
+        try (Connection conn = getConnection();
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(countSql)) {
+            int n = rs.next() ? rs.getInt(1) : 0;
+            if (n > 0) {
+                return;
+            }
+            try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
+                insertRoom(ps, "Quiet Study — North Wing", 2);
+                insertRoom(ps, "Quiet Study — South Wing", 2);
+                insertRoom(ps, "Group Study Room A", 6);
+                insertRoom(ps, "Presentation Pod", 8);
+            }
+            ConsoleUi.muted("Study rooms seeded.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static void insertRoom(PreparedStatement ps, String name, int capacity) throws SQLException {
+        ps.setString(1, name);
+        ps.setInt(2, capacity);
+        ps.executeUpdate();
+    }
+
+    /**
+     * For databases created before reader_content existed: fill sample excerpts by ISBN.
+     * Rows that already have non-empty reader_content are left unchanged.
+     */
+    public static void backfillDigitalReaderContentFromSamples() {
+        String updateSql = """
+                UPDATE items SET reader_content = ?
+                WHERE item_type = 'DIGITAL' AND isbn = ?
+                  AND (reader_content IS NULL OR TRIM(reader_content) = '')
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(updateSql)) {
+            for (DigitalResource d : SampleCatalog.sampleDigitalResources()) {
+                String excerpt = d.getReaderContent();
+                if (excerpt == null || excerpt.isBlank()) {
+                    continue;
+                }
+                ps.setString(1, excerpt);
+                ps.setString(2, d.getIsbn());
+                ps.executeUpdate();
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -201,11 +330,15 @@ public class Database {
         }
     }
 
-    /** Persists a catalog item and sets {@link LibraryItem#setId(int)}. */
+    /** Inserts any LibraryItem; DigitalResource may carry reader_content for the e-reader feature. */
     public static boolean saveItem(LibraryItem item) {
+        String readerContent = null;
+        if (item instanceof DigitalResource dr) {
+            readerContent = dr.getReaderContent();
+        }
         String sql = """
-                INSERT INTO items(item_type, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine)
-                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO items(item_type, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine, reader_content)
+                VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection conn = getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -218,6 +351,7 @@ public class Database {
             pstmt.setInt(7, item.getLoanDurationDays());
             pstmt.setInt(8, item.getBorrowingLimit());
             pstmt.setDouble(9, item.getDailyFine());
+            pstmt.setString(10, readerContent);
             pstmt.executeUpdate();
             try (ResultSet keys = pstmt.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -374,8 +508,8 @@ public class Database {
     /** itemType: BOOK, JOURNAL, DIGITAL */
     public static void addItem(String itemType, String title, String author, String isbn, String genre) {
         String sql = """
-                INSERT INTO items(item_type, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine)
-                VALUES(?, ?, ?, ?, ?, 'AVAILABLE', 14, 5, 1.0)
+                INSERT INTO items(item_type, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine, reader_content)
+                VALUES(?, ?, ?, ?, ?, 'AVAILABLE', 14, 5, 1.0, NULL)
                 """;
         try (Connection conn = getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -413,19 +547,183 @@ public class Database {
         return ok;
     }
 
-    /** Librarian: remove damaged books from circulation by marking LOST. */
+    /**
+     * Mark a copy LOST/damaged. Any open loan for that item is closed first so loans stay consistent with inventory.
+     */
     public static boolean removeDamagedBookByIsbn(String isbn) {
-        String sql = "UPDATE items SET status = 'LOST' WHERE item_type = 'BOOK' AND isbn = ?";
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, isbn);
-            int rows = ps.executeUpdate();
-            if (rows > 0) {
-                System.out.println("Book marked as damaged/removed from circulation.");
-                return true;
-            }
-            System.out.println("No book found with that ISBN.");
+        if (isbn == null || isbn.isBlank()) {
+            System.out.println("ISBN is required.");
             return false;
+        }
+        String findSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                Integer itemId = null;
+                try (PreparedStatement find = conn.prepareStatement(findSql)) {
+                    find.setString(1, isbn.trim());
+                    try (ResultSet rs = find.executeQuery()) {
+                        if (rs.next()) {
+                            itemId = rs.getInt("id");
+                        }
+                    }
+                }
+                if (itemId == null) {
+                    conn.rollback();
+                    System.out.println("No book found with that ISBN.");
+                    return false;
+                }
+                try (PreparedStatement closeLoan = conn.prepareStatement(
+                        "UPDATE loans SET return_date = ? WHERE item_id = ? AND return_date IS NULL")) {
+                    closeLoan.setString(1, LocalDate.now().toString());
+                    closeLoan.setInt(2, itemId);
+                    closeLoan.executeUpdate();
+                }
+                try (PreparedStatement lost = conn.prepareStatement(
+                        "UPDATE items SET status = 'LOST' WHERE id = ? AND item_type = 'BOOK'")) {
+                    lost.setInt(1, itemId);
+                    if (lost.executeUpdate() != 1) {
+                        conn.rollback();
+                        System.out.println("Could not update book status.");
+                        return false;
+                    }
+                }
+                conn.commit();
+                System.out.println("Book marked as lost/damaged and removed from circulation.");
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /** Lists physical books currently marked LOST (for tracking and replacement). */
+    public static void printLostBooks() {
+        String sql = """
+                SELECT id, title, author, isbn, genre
+                FROM items
+                WHERE item_type = 'BOOK' AND status = 'LOST'
+                ORDER BY title
+                """;
+        try (Connection conn = getConnection();
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            ConsoleUi.reportHeader("Lost / removed books");
+            int count = 0;
+            while (rs.next()) {
+                count++;
+                ConsoleUi.listItem("ID " + rs.getInt("id")
+                        + " | " + rs.getString("title")
+                        + " | " + rs.getString("author")
+                        + " | ISBN: " + rs.getString("isbn")
+                        + " | " + rs.getString("genre"));
+            }
+            if (count == 0) {
+                ConsoleUi.muted("(No lost books in catalog.)");
+            } else {
+                ConsoleUi.muted("Total: " + count + " title(s)");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** Fines with a remaining balance (overdue and other recorded fines). */
+    public static void printOutstandingFines() {
+        String sql = """
+                SELECT f.id, p.name, p.email, i.title, f.amount, f.amount_paid,
+                       (f.amount - f.amount_paid) AS balance, f.recorded_date, f.description
+                FROM fines f
+                JOIN patrons p ON p.id = f.patron_id
+                JOIN items i ON i.id = f.item_id
+                WHERE f.amount > f.amount_paid + 0.0001
+                ORDER BY f.recorded_date, f.id
+                """;
+        try (Connection conn = getConnection();
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            ConsoleUi.reportHeader("Outstanding fines");
+            int count = 0;
+            while (rs.next()) {
+                count++;
+                double balance = rs.getDouble("balance");
+                ConsoleUi.listItem("Fine #" + rs.getInt("id")
+                        + " | " + rs.getString("name") + " <" + rs.getString("email") + ">"
+                        + " | " + rs.getString("title"));
+                ConsoleUi.muted("Due $" + String.format("%.2f", rs.getDouble("amount"))
+                        + " | Paid $" + String.format("%.2f", rs.getDouble("amount_paid"))
+                        + " | Balance $" + String.format("%.2f", balance)
+                        + " | " + rs.getString("recorded_date"));
+                String desc = rs.getString("description");
+                if (desc != null && !desc.isBlank()) {
+                    ConsoleUi.muted("Note: " + desc);
+                }
+            }
+            if (count == 0) {
+                ConsoleUi.muted("(No outstanding fines.)");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Staff types how much the patron paid; we cap at remaining balance (no accidental negative debt universe).
+     * @return true if money actually moved
+     */
+    public static boolean recordFinePayment(int fineId, double payment) {
+        if (fineId <= 0 || payment <= 0) {
+            System.out.println("Fine id and a positive payment amount are required.");
+            return false;
+        }
+        String selectSql = "SELECT amount, amount_paid FROM fines WHERE id = ?";
+        String updateSql = "UPDATE fines SET amount_paid = ? WHERE id = ?";
+        try (Connection conn = getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                double amount;
+                double paidSoFar;
+                try (PreparedStatement sel = conn.prepareStatement(selectSql)) {
+                    sel.setInt(1, fineId);
+                    try (ResultSet rs = sel.executeQuery()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            System.out.println("No fine found with that id.");
+                            return false;
+                        }
+                        amount = rs.getDouble("amount");
+                        paidSoFar = rs.getDouble("amount_paid");
+                    }
+                }
+                double remaining = amount - paidSoFar;
+                if (remaining <= 0.0001) {
+                    conn.rollback();
+                    System.out.println("This fine is already fully paid.");
+                    return false;
+                }
+                double applied = Math.min(payment, remaining);
+                double newPaid = paidSoFar + applied;
+                try (PreparedStatement upd = conn.prepareStatement(updateSql)) {
+                    upd.setDouble(1, newPaid);
+                    upd.setInt(2, fineId);
+                    upd.executeUpdate();
+                }
+                conn.commit();
+                System.out.println("Payment recorded: $" + String.format("%.2f", applied) + ".");
+                if (newPaid + 0.0001 >= amount) {
+                    System.out.println("Fine #" + fineId + " is now fully paid.");
+                } else {
+                    System.out.println("Remaining balance: $" + String.format("%.2f", amount - newPaid) + ".");
+                }
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
@@ -447,19 +745,20 @@ public class Database {
                 ORDER BY item_type
                 """;
         try (Connection conn = getConnection()) {
-            System.out.println("\nInventory Audit");
+            ConsoleUi.reportHeader("Inventory audit");
             try (Statement st = conn.createStatement();
                     ResultSet rs = st.executeQuery(byStatus)) {
-                System.out.println("By Status:");
+                ConsoleUi.muted("By status");
                 while (rs.next()) {
-                    System.out.println("- " + rs.getString("status") + ": " + rs.getInt("total"));
+                    ConsoleUi.listItem(rs.getString("status") + ": " + rs.getInt("total"));
                 }
             }
             try (Statement st = conn.createStatement();
                     ResultSet rs = st.executeQuery(byType)) {
-                System.out.println("By Type:");
+                ConsoleUi.blank();
+                ConsoleUi.muted("By item type");
                 while (rs.next()) {
-                    System.out.println("- " + rs.getString("item_type") + ": " + rs.getInt("total"));
+                    ConsoleUi.listItem(rs.getString("item_type") + ": " + rs.getInt("total"));
                 }
             }
         } catch (SQLException e) {
@@ -580,7 +879,7 @@ public class Database {
         List<DigitalResource> resources = new ArrayList<>();
         String sql = """
                 SELECT id, title, author, isbn, genre, status
-                , loan_duration_days, borrowing_limit, daily_fine
+                , loan_duration_days, borrowing_limit, daily_fine, reader_content
                 FROM items
                 WHERE item_type = 'DIGITAL'
                 ORDER BY id
@@ -598,7 +897,8 @@ public class Database {
                         ItemStatus.valueOf(rs.getString("status")),
                         rs.getInt("loan_duration_days"),
                         rs.getInt("borrowing_limit"),
-                        rs.getDouble("daily_fine")));
+                        rs.getDouble("daily_fine"),
+                        rs.getString("reader_content")));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -611,7 +911,7 @@ public class Database {
         List<LibraryItem> items = new ArrayList<>();
         String sql = """
                 SELECT id, item_type, title, author, isbn, genre, status
-                , loan_duration_days, borrowing_limit, daily_fine
+                , loan_duration_days, borrowing_limit, daily_fine, reader_content
                 FROM items
                 ORDER BY title
                 """;
@@ -629,6 +929,7 @@ public class Database {
                 int loanDays = rs.getInt("loan_duration_days");
                 int borrowingLimit = rs.getInt("borrowing_limit");
                 double dailyFine = rs.getDouble("daily_fine");
+                String readerContent = rs.getString("reader_content");
 
                 switch (type) {
                     case "BOOK":
@@ -638,7 +939,8 @@ public class Database {
                         items.add(new Journal(id, title, author, isbn, genre, status, loanDays, borrowingLimit, dailyFine));
                         break;
                     case "DIGITAL":
-                        items.add(new DigitalResource(id, title, author, isbn, genre, status, loanDays, borrowingLimit, dailyFine));
+                        items.add(new DigitalResource(
+                                id, title, author, isbn, genre, status, loanDays, borrowingLimit, dailyFine, readerContent));
                         break;
                     default:
                         break;
@@ -650,7 +952,10 @@ public class Database {
         return items;
     }
 
-    /** Borrows if item is AVAILABLE; sets due date based on item loan duration. */
+    /**
+     * Borrow: flip book to ON_LOAN, insert loan, respect loan length and "how many times can you borrow this title" caps.
+     * One transaction — if the JVM trips, you do not get a Schrödinger's checkout.
+     */
     public static boolean borrowItem(int patronId, int itemId) {
         LocalDate issue = LocalDate.now();
 
@@ -772,17 +1077,44 @@ public class Database {
         }
     }
 
-    /** Returns an item that is currently on loan (one active loan per item). */
+    /** ISBN → item id → same as returnItem() (wrapper for the console UI). */
+    public static boolean returnBookByIsbn(String isbn) {
+        if (isbn == null || isbn.isBlank()) {
+            System.out.println("ISBN is required.");
+            return false;
+        }
+        String sql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, isbn.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    System.out.println("No book found with that ISBN.");
+                    return false;
+                }
+                return returnItem(rs.getInt("id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /**
+     * Return: close loan, book back to AVAILABLE. If the due date is a distant memory, we also insert a fine row.
+     * Same transaction — the money reminder and the shelf update arrive together, like a polite ambush.
+     */
     public static boolean returnItem(int itemId) {
         LocalDate today = LocalDate.now();
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
                 int activeLoanId;
+                int patronId;
                 LocalDate dueDate;
                 double dailyFine;
                 try (PreparedStatement loanInfo = conn.prepareStatement("""
-                        SELECT l.id, l.due_date, i.daily_fine
+                        SELECT l.id, l.patron_id, l.due_date, i.daily_fine
                         FROM loans l
                         JOIN items i ON i.id = l.item_id
                         WHERE l.item_id = ? AND l.return_date IS NULL
@@ -796,6 +1128,7 @@ public class Database {
                             return false;
                         }
                         activeLoanId = rs.getInt("id");
+                        patronId = rs.getInt("patron_id");
                         dueDate = LocalDate.parse(rs.getString("due_date"));
                         dailyFine = rs.getDouble("daily_fine");
                     }
@@ -816,12 +1149,29 @@ public class Database {
                     free.setInt(1, itemId);
                     free.executeUpdate();
                 }
-                conn.commit();
-                System.out.println("Item returned.");
                 long lateDays = Math.max(0, ChronoUnit.DAYS.between(dueDate, today));
                 if (lateDays > 0) {
+                    double fineAmount = lateDays * dailyFine;
+                    String desc = "Overdue " + lateDays + " day(s) at $" + String.format("%.2f", dailyFine) + "/day";
+                    try (PreparedStatement fineIns = conn.prepareStatement("""
+                            INSERT INTO fines(patron_id, loan_id, item_id, amount, amount_paid, recorded_date, description)
+                            VALUES(?, ?, ?, ?, 0, ?, ?)
+                            """)) {
+                        fineIns.setInt(1, patronId);
+                        fineIns.setInt(2, activeLoanId);
+                        fineIns.setInt(3, itemId);
+                        fineIns.setDouble(4, fineAmount);
+                        fineIns.setString(5, today.toString());
+                        fineIns.setString(6, desc);
+                        fineIns.executeUpdate();
+                    }
+                }
+                conn.commit();
+                System.out.println("Item returned.");
+                if (lateDays > 0) {
                     double fine = lateDays * dailyFine;
-                    System.out.println("Overdue by " + lateDays + " day(s). Fine: $" + String.format("%.2f", fine));
+                    System.out.println("Overdue by " + lateDays + " day(s). Fine recorded: $" + String.format("%.2f", fine));
+                    System.out.println("Patron can pay via Librarian Portal → Record fine payment.");
                 } else {
                     System.out.println("Returned on time. No fine.");
                 }
@@ -860,7 +1210,7 @@ public class Database {
         }
     }
 
-    /** Saves a reservation for an on-loan book. */
+    /** Queue for a book that is already out — no point reserving air when the copy is sitting on the shelf. */
     public static boolean addBookReservation(BookReservation reservation) {
         String checkSql = "SELECT status FROM items WHERE id = ? AND item_type = 'BOOK' LIMIT 1";
         String insertSql = """
@@ -902,6 +1252,191 @@ public class Database {
             } else {
                 e.printStackTrace();
             }
+            return false;
+        }
+    }
+
+    // ========== Study room booking (optional feature) ==========
+    // App asks questions; we say "no" if the slot is taken or the patron is imaginary.
+
+    public static boolean isStudySlotValid(String slotLabel) {
+        if (slotLabel == null) {
+            return false;
+        }
+        String t = slotLabel.trim();
+        for (String s : STUDY_TIME_SLOTS) {
+            if (s.equals(t)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static void printStudyRooms() {
+        String sql = "SELECT id, name, capacity FROM study_rooms ORDER BY id";
+        try (Connection conn = getConnection();
+                Statement st = conn.createStatement();
+                ResultSet rs = st.executeQuery(sql)) {
+            ConsoleUi.reportHeader("Study rooms");
+            while (rs.next()) {
+                ConsoleUi.listItem("Room #" + rs.getInt("id")
+                        + " | " + rs.getString("name")
+                        + " | seats: " + rs.getInt("capacity"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** Prints time slots for a room on a date; marks which are already booked. */
+    public static void printStudySlotsForRoom(int roomId, String bookingDateIso) {
+        List<String> taken = new ArrayList<>();
+        String q = "SELECT slot_label FROM study_room_bookings WHERE room_id = ? AND booking_date = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(q)) {
+            ps.setInt(1, roomId);
+            ps.setString(2, bookingDateIso);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    taken.add(rs.getString("slot_label"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+        ConsoleUi.reportHeader("Room #" + roomId + "  \u2014  " + bookingDateIso);
+        for (int i = 0; i < STUDY_TIME_SLOTS.length; i++) {
+            String slot = STUDY_TIME_SLOTS[i];
+            boolean booked = taken.contains(slot);
+            ConsoleUi.numberedLine(i + 1, slot + (booked ? "    [BOOKED]" : "    [available]"));
+        }
+    }
+
+    /**
+     * Inserts a booking; UNIQUE(room, date, slot) rejects a second booking for the same slot.
+     * Booking date must be today or later.
+     */
+    public static boolean bookStudyRoom(int roomId, String patronEmail, String bookingDateIso, String slotLabel) {
+        if (patronEmail == null || patronEmail.isBlank()) {
+            System.out.println("Patron email is required.");
+            return false;
+        }
+        if (!isStudySlotValid(slotLabel)) {
+            System.out.println("Invalid time slot.");
+            return false;
+        }
+        String email = patronEmail.trim();
+        LocalDate bookingDate;
+        try {
+            bookingDate = LocalDate.parse(bookingDateIso.trim());
+        } catch (Exception e) {
+            System.out.println("Use date format yyyy-MM-dd.");
+            return false;
+        }
+        if (bookingDate.isBefore(LocalDate.now())) {
+            System.out.println("Cannot book a date in the past.");
+            return false;
+        }
+        String dateStr = bookingDate.toString();
+        String patronCheck = "SELECT 1 FROM patrons WHERE email = ? LIMIT 1";
+        String roomCheck = "SELECT 1 FROM study_rooms WHERE id = ? LIMIT 1";
+        String insertSql = """
+                INSERT INTO study_room_bookings(room_id, patron_email, booking_date, slot_label, created_date)
+                VALUES(?, ?, ?, ?, ?)
+                """;
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement pc = conn.prepareStatement(patronCheck)) {
+                pc.setString(1, email);
+                try (ResultSet rs = pc.executeQuery()) {
+                    if (!rs.next()) {
+                        System.out.println("No patron registered with that email.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement rc = conn.prepareStatement(roomCheck)) {
+                rc.setInt(1, roomId);
+                try (ResultSet rs = rc.executeQuery()) {
+                    if (!rs.next()) {
+                        System.out.println("Study room not found.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement ins = conn.prepareStatement(insertSql)) {
+                ins.setInt(1, roomId);
+                ins.setString(2, email);
+                ins.setString(3, dateStr);
+                ins.setString(4, slotLabel.trim());
+                ins.setString(5, LocalDate.now().toString());
+                ins.executeUpdate();
+            }
+            System.out.println("Study room booked: room #" + roomId + " on " + dateStr + " " + slotLabel.trim() + ".");
+            return true;
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
+                System.out.println("That slot is already booked for this room and date.");
+            } else {
+                e.printStackTrace();
+            }
+            return false;
+        }
+    }
+
+    public static void printStudyBookingsForPatron(String patronEmail) {
+        if (patronEmail == null || patronEmail.isBlank()) {
+            System.out.println("Email is required.");
+            return;
+        }
+        String sql = """
+                SELECT b.id, r.name, b.booking_date, b.slot_label
+                FROM study_room_bookings b
+                JOIN study_rooms r ON r.id = b.room_id
+                WHERE LOWER(b.patron_email) = LOWER(?)
+                ORDER BY b.booking_date, b.slot_label
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, patronEmail.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                ConsoleUi.reportHeader("Your study room bookings");
+                int n = 0;
+                while (rs.next()) {
+                    n++;
+                    ConsoleUi.listItem("Booking #" + rs.getInt("id")
+                            + " | " + rs.getString("name")
+                            + " | " + rs.getString("booking_date")
+                            + " " + rs.getString("slot_label"));
+                }
+                if (n == 0) {
+                    ConsoleUi.muted("(No bookings.)");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean cancelStudyBooking(int bookingId, String patronEmail) {
+        if (bookingId <= 0 || patronEmail == null || patronEmail.isBlank()) {
+            System.out.println("Booking id and patron email are required.");
+            return false;
+        }
+        String sql = "DELETE FROM study_room_bookings WHERE id = ? AND LOWER(patron_email) = LOWER(?)";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, bookingId);
+            ps.setString(2, patronEmail.trim());
+            int rows = ps.executeUpdate();
+            if (rows == 1) {
+                System.out.println("Booking cancelled.");
+                return true;
+            }
+            System.out.println("No matching booking for that id and email.");
+            return false;
+        } catch (SQLException e) {
+            e.printStackTrace();
             return false;
         }
     }

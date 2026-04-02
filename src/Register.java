@@ -1,45 +1,50 @@
 import data.Database;
 import java.util.Scanner;
+import data.ConsoleUi;
 
-/** Console registration; for Swing, use the same checks and {@link Database#addUser}. */
+/*
+ * Sign-up flow: sanity-check passwords + email, make sure username/email not taken, then Database.addUser.
+ * Passwords are stored as plain text here for demonstration only; production code should hash passwords.
+ */
 public final class Register {
 
     private Register() {
     }
 
     private static void pressEnterToContinue(Scanner scn) {
-        System.out.print("Press Enter to continue...");
+        ConsoleUi.pressEnterHint();
         scn.nextLine();
     }
 
     public static void prompt(Scanner scn) {
-        System.out.print("Name: ");
+        ConsoleUi.sectionTitle("Create account");
+        ConsoleUi.fieldPrompt("Name");
         String name = scn.nextLine();
-        System.out.print("Email: ");
+        ConsoleUi.fieldPrompt("Email");
         String email = scn.nextLine();
-        System.out.print("Password: ");
+        ConsoleUi.fieldPrompt("Password");
         String password = scn.nextLine();
-        System.out.print("Confirm Password: ");
+        ConsoleUi.fieldPrompt("Confirm password");
         String conPassword = scn.nextLine();
 
         if (!password.equals(conPassword)) {
-            System.out.println("Passwords do not match. Please try again.");
+            ConsoleUi.warn("Passwords do not match.");
             pressEnterToContinue(scn);
             return;
         }
 
         if (!Database.isValidEmail(email)) {
-            System.out.println("Invalid email format.");
+            ConsoleUi.warn("Invalid email format.");
             pressEnterToContinue(scn);
             return;
         }
         if (Database.userExists(name, email)) {
-            System.out.println("That name or email is already registered.");
+            ConsoleUi.warn("That name or email is already registered.");
             pressEnterToContinue(scn);
             return;
         }
         if (Database.addUser(name, email, password)) {
-            System.out.println("Account created. You can log in now.");
+            ConsoleUi.ok("Account created. You can log in now.");
         }
     }
 }
