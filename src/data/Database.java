@@ -1077,6 +1077,83 @@ public class Database {
         }
     }
 
+    /** Borrows a book using patron email and exact book title. */
+    public static boolean borrowBookByPatronEmailAndTitle(String patronEmail, String title) {
+        if (patronEmail == null || patronEmail.isBlank() || title == null || title.isBlank()) {
+            System.out.println("Patron email and title are required.");
+            return false;
+        }
+
+        String patronSql = "SELECT id FROM patrons WHERE email = ? LIMIT 1";
+        String itemSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND title = ? LIMIT 1";
+
+        try (Connection conn = getConnection()) {
+            Integer patronId = null;
+            Integer itemId = null;
+
+            try (PreparedStatement patronStmt = conn.prepareStatement(patronSql)) {
+                patronStmt.setString(1, patronEmail.trim());
+                try (ResultSet rs = patronStmt.executeQuery()) {
+                    if (rs.next()) {
+                        patronId = rs.getInt("id");
+                    }
+                }
+            }
+
+            try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
+                itemStmt.setString(1, title.trim());
+                try (ResultSet rs = itemStmt.executeQuery()) {
+                    if (rs.next()) {
+                        itemId = rs.getInt("id");
+                    }
+                }
+            }
+
+            if (patronId == null) {
+                System.out.println("No patron found with that email. Register patron first.");
+                return false;
+            }
+            if (itemId == null) {
+                System.out.println("No book found with that exact title.");
+                return false;
+            }
+            return borrowItem(patronId, itemId);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    /** Returns available books for UI selection. */
+    public static List<Book> getAvailableBooks() {
+        List<Book> books = new ArrayList<>();
+        String sql = """
+                SELECT id, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine
+                FROM items
+                WHERE item_type = 'BOOK' AND status = 'AVAILABLE'
+                ORDER BY title
+                """;
+        try (Connection conn = getConnection();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql)) {
+            while (rs.next()) {
+                books.add(new Book(
+                        rs.getInt("id"),
+                        rs.getString("title"),
+                        rs.getString("author"),
+                        rs.getString("isbn"),
+                        rs.getString("genre"),
+                        ItemStatus.valueOf(rs.getString("status")),
+                        rs.getInt("loan_duration_days"),
+                        rs.getInt("borrowing_limit"),
+                        rs.getDouble("daily_fine")));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return books;
+    }
+
     /** ISBN → item id → same as returnItem() (wrapper for the console UI). */
     public static boolean returnBookByIsbn(String isbn) {
         if (isbn == null || isbn.isBlank()) {

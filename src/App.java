@@ -28,6 +28,16 @@ public class App {
         scn.nextLine();
     }
 
+    private static String toUserStatus(LibraryItem item) {
+        if ("ON_LOAN".equals(item.getStatus().name())) {
+            return "On Loan";
+        }
+        if ("AVAILABLE".equals(item.getStatus().name())) {
+            return "Available";
+        }
+        return item.getStatus().name();
+    }
+
     // --- List views: we ask the DB nicely, then spam the console ---
 
     private static void showBooksPage(Scanner scn) {
@@ -240,7 +250,7 @@ public class App {
                             for (LibraryItem item : matches) {
                                 ConsoleUi.listItem(item.getTitle()
                                         + " | ISBN: " + item.getIsbn()
-                                        + " | Status: " + item.getStatus());
+                                        + " | Status: " + toUserStatus(item));
                             }
 
                             // only bother asking about reservations if at least one match is actually out on loan
@@ -284,9 +294,46 @@ public class App {
                     case 4:
                         ConsoleUi.fieldPrompt("Patron email");
                         String patronEmail = scn.nextLine();
-                        ConsoleUi.fieldPrompt("Book ISBN");
-                        String borrowIsbn = scn.nextLine();
-                        Database.borrowBookByPatronEmailAndIsbn(patronEmail, borrowIsbn);
+                        ConsoleUi.menuStart("Borrow by");
+                        ConsoleUi.menuOption(1, "ISBN");
+                        ConsoleUi.menuOption(2, "Book title");
+                        ConsoleUi.menuOption(3, "Select from available books");
+                        ConsoleUi.menuEnd();
+                        int borrowMethod = scn.nextInt();
+                        scn.nextLine();
+                        switch (borrowMethod) {
+                            case 1:
+                                ConsoleUi.fieldPrompt("Book ISBN");
+                                Database.borrowBookByPatronEmailAndIsbn(patronEmail, scn.nextLine());
+                                break;
+                            case 2:
+                                ConsoleUi.fieldPrompt("Exact book title");
+                                Database.borrowBookByPatronEmailAndTitle(patronEmail, scn.nextLine());
+                                break;
+                            case 3:
+                                List<Book> availableBooks = Database.getAvailableBooks();
+                                if (availableBooks.isEmpty()) {
+                                    ConsoleUi.info("No available books right now.");
+                                    break;
+                                }
+                                ConsoleUi.sectionTitle("Available books");
+                                for (int i = 0; i < availableBooks.size(); i++) {
+                                    Book b = availableBooks.get(i);
+                                    ConsoleUi.numberedLine(i + 1, b.getTitle() + " | ISBN: " + b.getIsbn());
+                                }
+                                ConsoleUi.fieldPrompt("Select number");
+                                int selectedIndex = scn.nextInt();
+                                scn.nextLine();
+                                if (selectedIndex < 1 || selectedIndex > availableBooks.size()) {
+                                    ConsoleUi.warn("Invalid selection.");
+                                    break;
+                                }
+                                Book selectedBook = availableBooks.get(selectedIndex - 1);
+                                Database.borrowBookByPatronEmailAndIsbn(patronEmail, selectedBook.getIsbn());
+                                break;
+                            default:
+                                ConsoleUi.warn("Invalid borrow method.");
+                        }
                         pressEnterToContinue(scn);
                         break;
                     case 5:
