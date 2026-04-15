@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Java (with SQLite JDBC)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "javac -cp \"lib/sqlite-jdbc-3.51.1.0.jar\" -d bin (Get-ChildItem src -Recurse -Filter *.java | ForEach-Object { $_.FullName })"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        "$javac"
+      ]
+    }
+  ]
+}

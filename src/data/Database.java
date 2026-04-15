@@ -168,7 +168,15 @@ public class Database {
             seedStudyRoomsIfEmpty();
             backfillDigitalReaderContentFromSamples();
         } catch (SQLException e) {
-            e.printStackTrace();
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            if (msg.contains("No suitable driver")) {
+                ConsoleUi.reportHeader("Database setup");
+                ConsoleUi.warn("SQLite JDBC driver not found.");
+                ConsoleUi.info("Use VS Code launch config: Run App (with SQLite JDBC).");
+                ConsoleUi.info("Or run with classpath including lib/sqlite-jdbc-3.51.1.0.jar.");
+            } else {
+                e.printStackTrace();
+            }
         }
     }
 
