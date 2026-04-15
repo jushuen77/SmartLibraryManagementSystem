@@ -1,0 +1,16 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Run App (with SQLite JDBC)",
+      "request": "launch",
+      "mainClass": "App",
+      "classPaths": [
+        "${workspaceFolder}/bin",
+        "${workspaceFolder}/lib/sqlite-jdbc-3.51.1.0.jar"
+      ],
+      "preLaunchTask": "Build Java (with SQLite JDBC)"
+    }
+  ]
+}
