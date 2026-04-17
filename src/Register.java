@@ -1,10 +1,10 @@
+import data.ConsoleUi;
 import data.Database;
 import java.util.Scanner;
-import data.ConsoleUi;
+import library.model.PatronType;
 
 /*
- * Sign-up flow: sanity-check passwords + email, make sure username/email not taken, then Database.addUser.
- * Passwords are stored as plain text here for demonstration only; production code should hash passwords.
+ * Sign-up for library members (student, faculty, or public). Creates both a login and a patron record.
  */
 public final class Register {
 
@@ -17,7 +17,7 @@ public final class Register {
     }
 
     public static void prompt(Scanner scn) {
-        ConsoleUi.sectionTitle("Create account");
+        ConsoleUi.sectionTitle("Register (library member)");
         ConsoleUi.fieldPrompt("Name");
         String name = scn.nextLine();
         ConsoleUi.fieldPrompt("Email");
@@ -35,6 +35,8 @@ public final class Register {
 
         if (!Database.isValidEmail(email)) {
             ConsoleUi.warn("Invalid email format.");
+            System.out.printf("\t\t\tEmail format is <name> + @ + your email provider!! FAH");
+            System.out.println();
             pressEnterToContinue(scn);
             return;
         }
@@ -43,8 +45,29 @@ public final class Register {
             pressEnterToContinue(scn);
             return;
         }
+
+        PatronType memberType = PatronType.PUBLIC;
+        ConsoleUi.menuStart("Member type");
+        ConsoleUi.menuOption(1, "Student");
+        ConsoleUi.menuOption(2, "Faculty");
+        ConsoleUi.menuOption(3, "Public member");
+        ConsoleUi.menuEnd();
+        try {
+            int mt = scn.nextInt();
+            scn.nextLine();
+            memberType = switch (mt) {
+                case 1 -> PatronType.STUDENT;
+                case 2 -> PatronType.FACULTY;
+                default -> PatronType.PUBLIC;
+            };
+        } catch (Exception e) {
+            scn.nextLine();
+            ConsoleUi.warn("Invalid choice; using public member.");
+        }
+
         if (Database.addUser(name, email, password)) {
-            ConsoleUi.ok("Account created. You can log in now.");
+            Database.ensurePatronForNewUser(name, email, memberType);
+            ConsoleUi.ok("Account created as " + memberType.toDisplayString() + ". You can sign in now.");
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Fake starter data so the app isn't empty on first run — Harry Potter vibes + a few tech books.
+ * Fake starter data so the app isn't empty on first run — sample books, journals, digital titles, and patrons.
  * Database.seedSampleDataIfEmpty() uses this data; digital items include short reader excerpts for the e-book viewer.
  * Edit titles or ISBNs here to change the default catalog.
  */
@@ -59,9 +59,39 @@ public final class SampleCatalog {
 
     public static List<Journal> sampleJournals() {
         List<Journal> list = new ArrayList<>();
-        list.add(new Journal("Nature - Quantum Computing Issue", "Nature Editorial", "0028-0836", "Science"));
-        list.add(new Journal("IEEE Software - Secure Coding", "IEEE", "0740-7459", "Technology"));
-        list.add(new Journal("The Lancet - Public Health Review", "The Lancet", "0140-6736", "Medicine"));
+        Journal nature = new Journal("Nature — Vol. 632, Quantum computing focus", "Nature Publishing Group", "0028-0836", "Science");
+        nature.setLoanPolicy(7, 2, 1.50);
+        list.add(nature);
+        Journal ieeeSw = new Journal("IEEE Software — Secure coding practices", "IEEE Computer Society", "0740-7459", "Technology");
+        ieeeSw.setLoanPolicy(14, 3, 1.25);
+        list.add(ieeeSw);
+        Journal lancet = new Journal("The Lancet — Public health and policy review", "Elsevier", "0140-6736", "Medicine");
+        lancet.setLoanPolicy(7, 2, 2.00);
+        list.add(lancet);
+        Journal jmlr = new Journal("Journal of Machine Learning Research — Vol. 25", "JMLR Inc.", "1532-4435", "Computer science");
+        jmlr.setLoanPolicy(14, 2, 1.00);
+        list.add(jmlr);
+        Journal acmCsur = new Journal("ACM Computing Surveys — Human–computer interaction", "ACM", "0360-0300", "Computer science");
+        acmCsur.setLoanPolicy(14, 2, 1.25);
+        list.add(acmCsur);
+        Journal science = new Journal("Science — Research articles digest", "AAAS", "0036-8075", "Science");
+        science.setLoanPolicy(7, 2, 1.75);
+        list.add(science);
+        Journal hbr = new Journal("Harvard Business Review — Strategy & leadership", "Harvard Business Publishing", "0017-8012", "Business");
+        hbr.setLoanPolicy(21, 4, 1.00);
+        list.add(hbr);
+        Journal psych = new Journal("Psychological Review — Cognitive science monograph", "APA", "0033-295X", "Psychology");
+        psych.setLoanPolicy(14, 3, 1.00);
+        list.add(psych);
+        Journal arch = new Journal("Architectural Review — Sustainable design", "EMAP Publishing", "0003-861X", "Architecture");
+        arch.setLoanPolicy(21, 3, 0.75);
+        list.add(arch);
+        Journal chem = new Journal("Journal of the American Chemical Society — Highlights", "ACS Publications", "0002-7863", "Chemistry");
+        chem.setLoanPolicy(7, 2, 1.50);
+        list.add(chem);
+        Journal hist = new Journal("Past & Present — Social history quarterly", "Oxford University Press", "0031-2746", "History");
+        hist.setLoanPolicy(28, 4, 0.50);
+        list.add(hist);
         return list;
     }
 

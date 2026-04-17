@@ -2,6 +2,8 @@ package data;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
@@ -149,7 +151,7 @@ public class Database {
                 );
                 """;
 
-        try (Connection conn = getConnection();
+        try (Connection conn = getConnection();//this is to get connection for the database
                 Statement stmt = conn.createStatement()) {
             stmt.execute(usersTable);
             stmt.execute(patronsTable);
@@ -165,6 +167,7 @@ public class Database {
             stmt.execute(activeReservationIndex);
             ConsoleUi.muted("Database ready: users, patrons, items, loans, reservations, fines, study rooms.");
             seedSampleDataIfEmpty();
+            syncPatronsFromUsersIfMissing();
             seedStudyRoomsIfEmpty();
             backfillDigitalReaderContentFromSamples();
         } catch (SQLException e) {
@@ -180,7 +183,6 @@ public class Database {
         }
     }
 
-    /** Library opens at nine-ish; do not invent "25:00-26:00" or the booking code will judge you. */
     public static final String[] STUDY_TIME_SLOTS = {
             "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
             "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"
@@ -258,6 +260,28 @@ public class Database {
         }
     }
 
+    /**
+     * Ensures every {@code users} row has a matching {@code patrons} row (fixes accounts created before this link existed).
+     */
+    public static void syncPatronsFromUsersIfMissing() {
+        String sql = """
+                INSERT INTO patrons(name, email, patron_type)
+                SELECT u.name, u.email, 'PUBLIC' FROM users u
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM patrons p WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(u.email))
+                )
+                """;
+        try (Connection conn = getConnection();
+                Statement st = conn.createStatement()) {
+            int n = st.executeUpdate(sql);
+            if (n > 0) {
+                ConsoleUi.muted("Linked " + n + " user account(s) to patron records.");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     // First launch: we invent four rooms. After that, your furniture is your problem.
     private static void seedStudyRoomsIfEmpty() {
         String countSql = "SELECT COUNT(*) FROM study_rooms";
@@ -270,8 +294,8 @@ public class Database {
                 return;
             }
             try (PreparedStatement ps = conn.prepareStatement(insertSql)) {
-                insertRoom(ps, "Quiet Study — North Wing", 2);
-                insertRoom(ps, "Quiet Study — South Wing", 2);
+                insertRoom(ps, "Quiet Study Located at North Wing", 2);
+                insertRoom(ps, "Quiet Study Located at South Wing", 2);
                 insertRoom(ps, "Group Study Room A", 6);
                 insertRoom(ps, "Presentation Pod", 8);
             }
@@ -398,14 +422,14 @@ public class Database {
     }
 
     /**
-     * Checks {@code users} for a matching name or email and password.
+     * Validates patron login and returns {@code [display name, canonical email]} from {@code users}, or {@code null}.
      */
-    public static boolean authenticate(String emailOrName, String password) {
+    public static String[] findUserNameEmailIfValidCredentials(String emailOrName, String password) {
         if (password == null || emailOrName == null || emailOrName.isBlank()) {
-            return false;
+            return null;
         }
         String trimmed = emailOrName.trim();
-        String sql = "SELECT 1 FROM users WHERE (email = ? OR name = ?) AND password = ? LIMIT 1";
+        String sql = "SELECT name, email FROM users WHERE (email = ? OR name = ?) AND password = ? LIMIT 1";
 
         try (Connection conn = getConnection();
                 PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -413,11 +437,95 @@ public class Database {
             pstmt.setString(2, trimmed);
             pstmt.setString(3, password);
             ResultSet rs = pstmt.executeQuery();
-            return rs.next();
+            if (rs.next()) {
+                return new String[] { rs.getString("name"), rs.getString("email") };
+            }
+            return null;
         } catch (SQLException e) {
             e.printStackTrace();
-            return false;
+            return null;
         }
+    }
+
+    /**
+     * Checks {@code users} for a matching name or email and password.
+     */
+    public static boolean authenticate(String emailOrName, String password) {
+        return findUserNameEmailIfValidCredentials(emailOrName, password) != null;
+    }
+
+    /**
+     * After a new {@code users} row, ensure a matching {@code patrons} row so loans and study bookings work.
+     */
+    public static void ensurePatronForNewUser(String name, String email, PatronType memberType) {
+        if (name == null || email == null || email.isBlank()) {
+            return;
+        }
+        PatronType type = memberType != null ? memberType : PatronType.PUBLIC;
+        String check = "SELECT 1 FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(check)) {
+            ps.setString(1, email.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return;
+                }
+            }
+            savePatron(new Patron(name.trim(), email.trim(), type));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /** Same as {@link #ensurePatronForNewUser(String, String, PatronType)} with {@link PatronType#PUBLIC}. */
+    public static void ensurePatronForNewUser(String name, String email) {
+        ensurePatronForNewUser(name, email, PatronType.PUBLIC);
+    }
+
+    /** Resolves {@link PatronType} from the {@code patrons} table (library member category). */
+    public static PatronType getPatronTypeForEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return PatronType.PUBLIC;
+        }
+        String sql = "SELECT patron_type FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return PatronType.valueOf(rs.getString("patron_type"));
+                }
+            }
+        } catch (Exception e) {
+            // IllegalArgumentException or SQLException — fall through
+        }
+        return PatronType.PUBLIC;
+    }
+
+    /** Accepts dd/mm/yyyy, d/m/yyyy, dd-mm-yyyy, or yyyy-mm-dd. */
+    public static LocalDate parseFlexibleDate(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String s = raw.trim();
+        if (s.isEmpty()) {
+            return null;
+        }
+        DateTimeFormatter[] fmts = {
+                DateTimeFormatter.ofPattern("d/M/yyyy"),
+                DateTimeFormatter.ofPattern("dd/MM/yyyy"),
+                DateTimeFormatter.ofPattern("d-M-yyyy"),
+                DateTimeFormatter.ofPattern("dd-MM-yyyy"),
+                DateTimeFormatter.ISO_LOCAL_DATE
+        };
+        for (DateTimeFormatter fmt : fmts) {
+            try {
+                return LocalDate.parse(s, fmt);
+            } catch (DateTimeParseException ignored) {
+                // try next pattern
+            }
+        }
+        return null;
     }
 
     public static boolean userExists(String name, String email) {
@@ -511,6 +619,41 @@ public class Database {
             e.printStackTrace();
         }
         return patrons;
+    }
+
+    /** Single patron row by email (library profile), or {@code null}. */
+    public static Patron getPatronByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        String sql = """
+                SELECT id, name, email, patron_type FROM patrons
+                WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))
+                LIMIT 1
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    return null;
+                }
+                PatronType type;
+                try {
+                    type = PatronType.valueOf(rs.getString("patron_type"));
+                } catch (IllegalArgumentException e) {
+                    type = PatronType.PUBLIC;
+                }
+                return new Patron(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        rs.getString("email"),
+                        type);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     /** itemType: BOOK, JOURNAL, DIGITAL */
@@ -970,6 +1113,39 @@ public class Database {
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
+                PatronType memberType;
+                try (PreparedStatement typeStmt = conn.prepareStatement(
+                        "SELECT patron_type FROM patrons WHERE id = ?")) {
+                    typeStmt.setInt(1, patronId);
+                    try (ResultSet rs = typeStmt.executeQuery()) {
+                        if (!rs.next()) {
+                            conn.rollback();
+                            ConsoleUi.warn("Member record not found.");
+                            return false;
+                        }
+                        try {
+                            memberType = PatronType.valueOf(rs.getString("patron_type"));
+                        } catch (IllegalArgumentException e) {
+                            memberType = PatronType.PUBLIC;
+                        }
+                    }
+                }
+
+                try (PreparedStatement activeStmt = conn.prepareStatement(
+                        "SELECT COUNT(*) FROM loans WHERE patron_id = ? AND return_date IS NULL")) {
+                    activeStmt.setInt(1, patronId);
+                    try (ResultSet rs = activeStmt.executeQuery()) {
+                        int active = rs.next() ? rs.getInt(1) : 0;
+                        if (active >= memberType.maxConcurrentLoans()) {
+                            conn.rollback();
+                            ConsoleUi.warn("You already have the maximum number of books out for a "
+                                    + memberType.toDisplayString()
+                                    + " (" + memberType.maxConcurrentLoans() + "). Return a book first.");
+                            return false;
+                        }
+                    }
+                }
+
                 int loanDays;
                 int borrowingLimit;
                 try (PreparedStatement policyStmt = conn.prepareStatement(
@@ -978,10 +1154,11 @@ public class Database {
                     try (ResultSet rs = policyStmt.executeQuery()) {
                         if (!rs.next()) {
                             conn.rollback();
-                            System.out.println("Book not found.");
+                            ConsoleUi.warn("Book not found.");
                             return false;
                         }
-                        loanDays = rs.getInt("loan_duration_days");
+                        int bookLoanDays = rs.getInt("loan_duration_days");
+                        loanDays = memberType.effectiveLoanDays(bookLoanDays);
                         borrowingLimit = rs.getInt("borrowing_limit");
                     }
                 }
@@ -994,7 +1171,7 @@ public class Database {
                         int totalBorrowedTimes = rs.next() ? rs.getInt(1) : 0;
                         if (totalBorrowedTimes >= borrowingLimit) {
                             conn.rollback();
-                            System.out.println("Borrowing limit reached for this book.");
+                            ConsoleUi.warn("Borrowing limit reached for this book.");
                             return false;
                         }
                     }
@@ -1006,7 +1183,7 @@ public class Database {
                     lockItem.setInt(1, itemId);
                     if (lockItem.executeUpdate() != 1) {
                         conn.rollback();
-                        System.out.println("Item not available (wrong id, on loan, or lost).");
+                        ConsoleUi.warn("Item not available (wrong id, on loan, or lost).");
                         return false;
                     }
                 }
@@ -1019,14 +1196,14 @@ public class Database {
                     ins.executeUpdate();
                 }
                 conn.commit();
-                System.out.println("Borrowed successfully.");
-                System.out.println("Issue date: " + issue);
-                System.out.println("Due date: " + due);
+                ConsoleUi.ok("Borrowed successfully.");
+                ConsoleUi.info("Issue date: " + ConsoleUi.formatUkDate(issue));
+                ConsoleUi.info("Due date: " + ConsoleUi.formatUkDate(due));
                 return true;
             } catch (SQLException e) {
                 conn.rollback();
                 if (e.getMessage() != null && e.getMessage().contains("FOREIGN KEY")) {
-                    System.out.println("Invalid patron or item id.");
+                    ConsoleUi.warn("Invalid patron or item id.");
                 } else {
                     e.printStackTrace();
                 }
@@ -1041,11 +1218,11 @@ public class Database {
     /** Borrows a book using patron email and book ISBN. */
     public static boolean borrowBookByPatronEmailAndIsbn(String patronEmail, String isbn) {
         if (patronEmail == null || patronEmail.isBlank() || isbn == null || isbn.isBlank()) {
-            System.out.println("Patron email and ISBN are required.");
+            ConsoleUi.warn("Patron email and ISBN are required.");
             return false;
         }
 
-        String patronSql = "SELECT id FROM patrons WHERE email = ? LIMIT 1";
+        String patronSql = "SELECT id FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
         String itemSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
 
         try (Connection conn = getConnection()) {
@@ -1071,11 +1248,11 @@ public class Database {
             }
 
             if (patronId == null) {
-                System.out.println("No patron found with that email. Register patron first.");
+                ConsoleUi.warn("No patron record for your account. Register again or contact staff.");
                 return false;
             }
             if (itemId == null) {
-                System.out.println("No book found with that ISBN.");
+                ConsoleUi.warn("No book found with that ISBN.");
                 return false;
             }
             return borrowItem(patronId, itemId);
@@ -1088,11 +1265,11 @@ public class Database {
     /** Borrows a book using patron email and exact book title. */
     public static boolean borrowBookByPatronEmailAndTitle(String patronEmail, String title) {
         if (patronEmail == null || patronEmail.isBlank() || title == null || title.isBlank()) {
-            System.out.println("Patron email and title are required.");
+            ConsoleUi.warn("Patron email and title are required.");
             return false;
         }
 
-        String patronSql = "SELECT id FROM patrons WHERE email = ? LIMIT 1";
+        String patronSql = "SELECT id FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
         String itemSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND title = ? LIMIT 1";
 
         try (Connection conn = getConnection()) {
@@ -1118,11 +1295,11 @@ public class Database {
             }
 
             if (patronId == null) {
-                System.out.println("No patron found with that email. Register patron first.");
+                ConsoleUi.warn("No patron record for your account. Register again or contact staff.");
                 return false;
             }
             if (itemId == null) {
-                System.out.println("No book found with that exact title.");
+                ConsoleUi.warn("No book found with that exact title.");
                 return false;
             }
             return borrowItem(patronId, itemId);
@@ -1160,6 +1337,166 @@ public class Database {
             e.printStackTrace();
         }
         return books;
+    }
+
+    /** Available books whose title contains the query (case-insensitive). */
+    public static List<Book> findAvailableBooksByTitleLike(String query) {
+        List<Book> books = new ArrayList<>();
+        if (query == null || query.isBlank()) {
+            return books;
+        }
+        String sql = """
+                SELECT id, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine
+                FROM items
+                WHERE item_type = 'BOOK' AND status = 'AVAILABLE' AND LOWER(title) LIKE LOWER('%' || ? || '%')
+                ORDER BY title
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, query.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    books.add(new Book(
+                            rs.getInt("id"),
+                            rs.getString("title"),
+                            rs.getString("author"),
+                            rs.getString("isbn"),
+                            rs.getString("genre"),
+                            ItemStatus.valueOf(rs.getString("status")),
+                            rs.getInt("loan_duration_days"),
+                            rs.getInt("borrowing_limit"),
+                            rs.getDouble("daily_fine")));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return books;
+    }
+
+    /** One row the patron currently has on loan (physical book). */
+    public static final class ActiveBookLoan {
+        public final int itemId;
+        public final String title;
+        public final String isbn;
+        public final LocalDate signedOutDate;
+        public final LocalDate dueDate;
+
+        public ActiveBookLoan(int itemId, String title, String isbn, LocalDate signedOutDate, LocalDate dueDate) {
+            this.itemId = itemId;
+            this.title = title;
+            this.isbn = isbn;
+            this.signedOutDate = signedOutDate;
+            this.dueDate = dueDate;
+        }
+    }
+
+    public static List<ActiveBookLoan> getActiveBookLoansForPatron(String patronEmail) {
+        List<ActiveBookLoan> out = new ArrayList<>();
+        if (patronEmail == null || patronEmail.isBlank()) {
+            return out;
+        }
+        String sql = """
+                SELECT i.id, i.title, i.isbn, l.issue_date, l.due_date
+                FROM loans l
+                JOIN patrons p ON p.id = l.patron_id
+                JOIN items i ON i.id = l.item_id
+                WHERE LOWER(p.email) = LOWER(TRIM(?)) AND l.return_date IS NULL AND i.item_type = 'BOOK'
+                ORDER BY l.due_date
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, patronEmail.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(new ActiveBookLoan(
+                            rs.getInt("id"),
+                            rs.getString("title"),
+                            rs.getString("isbn"),
+                            LocalDate.parse(rs.getString("issue_date")),
+                            LocalDate.parse(rs.getString("due_date"))));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return out;
+    }
+
+    public static List<ActiveBookLoan> findActiveBookLoansForPatronByTitleLike(String patronEmail, String titleQuery) {
+        List<ActiveBookLoan> all = getActiveBookLoansForPatron(patronEmail);
+        if (titleQuery == null || titleQuery.isBlank()) {
+            return all;
+        }
+        String q = titleQuery.trim().toLowerCase();
+        List<ActiveBookLoan> out = new ArrayList<>();
+        for (ActiveBookLoan row : all) {
+            if (row.title != null && row.title.toLowerCase().contains(q)) {
+                out.add(row);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Returns a copy only if this patron has it on loan (prevents returning someone else's checkout).
+     */
+    public static boolean returnBookForPatronByItemId(String patronEmail, int itemId) {
+        if (patronEmail == null || patronEmail.isBlank()) {
+            ConsoleUi.warn("Patron email is required.");
+            return false;
+        }
+        String sql = """
+                SELECT 1 FROM loans l
+                JOIN patrons p ON p.id = l.patron_id
+                WHERE l.item_id = ? AND LOWER(p.email) = LOWER(TRIM(?)) AND l.return_date IS NULL
+                LIMIT 1
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, itemId);
+            ps.setString(2, patronEmail.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    ConsoleUi.warn("You do not have an active loan for that book.");
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+        return returnItem(itemId);
+    }
+
+    /** Patron returns a book they borrowed, matched by ISBN. */
+    public static boolean returnBookByPatronEmailAndIsbn(String patronEmail, String isbn) {
+        if (patronEmail == null || patronEmail.isBlank() || isbn == null || isbn.isBlank()) {
+            ConsoleUi.warn("Patron email and ISBN are required.");
+            return false;
+        }
+        String sql = """
+                SELECT i.id FROM items i
+                JOIN loans l ON l.item_id = i.id AND l.return_date IS NULL
+                JOIN patrons p ON p.id = l.patron_id
+                WHERE i.item_type = 'BOOK' AND i.isbn = ? AND LOWER(p.email) = LOWER(TRIM(?))
+                LIMIT 1
+                """;
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, isbn.trim());
+            ps.setString(2, patronEmail.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) {
+                    ConsoleUi.warn("No on-loan copy with that ISBN on your account.");
+                    return false;
+                }
+                return returnBookForPatronByItemId(patronEmail, rs.getInt("id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /** ISBN → item id → same as returnItem() (wrapper for the console UI). */
@@ -1209,7 +1546,7 @@ public class Database {
                     try (ResultSet rs = loanInfo.executeQuery()) {
                         if (!rs.next()) {
                             conn.rollback();
-                            System.out.println("No active loan for that item id.");
+                            ConsoleUi.warn("No active loan for that item id.");
                             return false;
                         }
                         activeLoanId = rs.getInt("id");
@@ -1225,7 +1562,7 @@ public class Database {
                     closeLoan.setInt(2, activeLoanId);
                     if (closeLoan.executeUpdate() != 1) {
                         conn.rollback();
-                        System.out.println("Could not close active loan.");
+                        ConsoleUi.warn("Could not close active loan.");
                         return false;
                     }
                 }
@@ -1252,13 +1589,13 @@ public class Database {
                     }
                 }
                 conn.commit();
-                System.out.println("Item returned.");
+                ConsoleUi.ok("Item returned.");
                 if (lateDays > 0) {
                     double fine = lateDays * dailyFine;
-                    System.out.println("Overdue by " + lateDays + " day(s). Fine recorded: $" + String.format("%.2f", fine));
-                    System.out.println("Patron can pay via Librarian Portal → Record fine payment.");
+                    ConsoleUi.warn("Overdue by " + lateDays + " day(s). Fine recorded: $" + String.format("%.2f", fine));
+                    ConsoleUi.info("Patron can pay via Librarian portal, Record fine payment.");
                 } else {
-                    System.out.println("Returned on time. No fine.");
+                    ConsoleUi.info("Returned on time. No fine.");
                 }
                 return true;
             } catch (SQLException e) {
@@ -1307,11 +1644,11 @@ public class Database {
                 check.setInt(1, reservation.getItemId());
                 try (ResultSet rs = check.executeQuery()) {
                     if (!rs.next()) {
-                        System.out.println("Book not found.");
+                        ConsoleUi.warn("Book not found.");
                         return false;
                     }
                     if (!"ON_LOAN".equals(rs.getString("status"))) {
-                        System.out.println("This book is not on loan, so reservation is not required.");
+                        ConsoleUi.info("This book is not on loan, so reservation is not required.");
                         return false;
                     }
                 }
@@ -1329,11 +1666,11 @@ public class Database {
                     }
                 }
             }
-            System.out.println("Reservation request submitted.");
+            ConsoleUi.ok("Reservation request submitted.");
             return true;
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println("You already have a pending reservation for this book.");
+                ConsoleUi.warn("You already have a pending reservation for this book.");
             } else {
                 e.printStackTrace();
             }
@@ -1357,122 +1694,66 @@ public class Database {
         return false;
     }
 
-    public static void printStudyRooms() {
+    /** Room row for numbered pick lists in the console UI. */
+    public static final class StudyRoomRow {
+        public final int id;
+        public final String name;
+        public final int capacity;
+
+        public StudyRoomRow(int id, String name, int capacity) {
+            this.id = id;
+            this.name = name;
+            this.capacity = capacity;
+        }
+    }
+
+    public static List<StudyRoomRow> getStudyRoomsList() {
+        List<StudyRoomRow> out = new ArrayList<>();
         String sql = "SELECT id, name, capacity FROM study_rooms ORDER BY id";
         try (Connection conn = getConnection();
                 Statement st = conn.createStatement();
                 ResultSet rs = st.executeQuery(sql)) {
-            ConsoleUi.reportHeader("Study rooms");
             while (rs.next()) {
-                ConsoleUi.listItem("Room #" + rs.getInt("id")
-                        + " | " + rs.getString("name")
-                        + " | seats: " + rs.getInt("capacity"));
+                out.add(new StudyRoomRow(rs.getInt("id"), rs.getString("name"), rs.getInt("capacity")));
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return out;
     }
 
-    /** Prints time slots for a room on a date; marks which are already booked. */
-    public static void printStudySlotsForRoom(int roomId, String bookingDateIso) {
-        List<String> taken = new ArrayList<>();
-        String q = "SELECT slot_label FROM study_room_bookings WHERE room_id = ? AND booking_date = ?";
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(q)) {
-            ps.setInt(1, roomId);
-            ps.setString(2, bookingDateIso);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    taken.add(rs.getString("slot_label"));
-                }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return;
+    public static void printStudyRooms() {
+        ConsoleUi.reportHeader("Study rooms");
+        List<StudyRoomRow> rooms = getStudyRoomsList();
+        int i = 1;
+        for (StudyRoomRow r : rooms) {
+            ConsoleUi.numberedLine(i, "Room #" + r.id + " | " + r.name + " | seats: " + r.capacity);
+            i++;
         }
-        ConsoleUi.reportHeader("Room #" + roomId + "  \u2014  " + bookingDateIso);
-        for (int i = 0; i < STUDY_TIME_SLOTS.length; i++) {
-            String slot = STUDY_TIME_SLOTS[i];
-            boolean booked = taken.contains(slot);
-            ConsoleUi.numberedLine(i + 1, slot + (booked ? "    [BOOKED]" : "    [available]"));
+        if (rooms.isEmpty()) {
+            ConsoleUi.muted("(No rooms configured.)");
         }
     }
 
-    /**
-     * Inserts a booking; UNIQUE(room, date, slot) rejects a second booking for the same slot.
-     * Booking date must be today or later.
-     */
-    public static boolean bookStudyRoom(int roomId, String patronEmail, String bookingDateIso, String slotLabel) {
+    /** One study booking for the signed-in member (used for list + cancel flows). */
+    public static final class StudyBookingRow {
+        public final int id;
+        public final String roomName;
+        public final LocalDate bookingDate;
+        public final String slotLabel;
+
+        public StudyBookingRow(int id, String roomName, LocalDate bookingDate, String slotLabel) {
+            this.id = id;
+            this.roomName = roomName;
+            this.bookingDate = bookingDate;
+            this.slotLabel = slotLabel;
+        }
+    }
+
+    public static List<StudyBookingRow> getStudyBookingsForPatron(String patronEmail) {
+        List<StudyBookingRow> out = new ArrayList<>();
         if (patronEmail == null || patronEmail.isBlank()) {
-            System.out.println("Patron email is required.");
-            return false;
-        }
-        if (!isStudySlotValid(slotLabel)) {
-            System.out.println("Invalid time slot.");
-            return false;
-        }
-        String email = patronEmail.trim();
-        LocalDate bookingDate;
-        try {
-            bookingDate = LocalDate.parse(bookingDateIso.trim());
-        } catch (Exception e) {
-            System.out.println("Use date format yyyy-MM-dd.");
-            return false;
-        }
-        if (bookingDate.isBefore(LocalDate.now())) {
-            System.out.println("Cannot book a date in the past.");
-            return false;
-        }
-        String dateStr = bookingDate.toString();
-        String patronCheck = "SELECT 1 FROM patrons WHERE email = ? LIMIT 1";
-        String roomCheck = "SELECT 1 FROM study_rooms WHERE id = ? LIMIT 1";
-        String insertSql = """
-                INSERT INTO study_room_bookings(room_id, patron_email, booking_date, slot_label, created_date)
-                VALUES(?, ?, ?, ?, ?)
-                """;
-        try (Connection conn = getConnection()) {
-            try (PreparedStatement pc = conn.prepareStatement(patronCheck)) {
-                pc.setString(1, email);
-                try (ResultSet rs = pc.executeQuery()) {
-                    if (!rs.next()) {
-                        System.out.println("No patron registered with that email.");
-                        return false;
-                    }
-                }
-            }
-            try (PreparedStatement rc = conn.prepareStatement(roomCheck)) {
-                rc.setInt(1, roomId);
-                try (ResultSet rs = rc.executeQuery()) {
-                    if (!rs.next()) {
-                        System.out.println("Study room not found.");
-                        return false;
-                    }
-                }
-            }
-            try (PreparedStatement ins = conn.prepareStatement(insertSql)) {
-                ins.setInt(1, roomId);
-                ins.setString(2, email);
-                ins.setString(3, dateStr);
-                ins.setString(4, slotLabel.trim());
-                ins.setString(5, LocalDate.now().toString());
-                ins.executeUpdate();
-            }
-            System.out.println("Study room booked: room #" + roomId + " on " + dateStr + " " + slotLabel.trim() + ".");
-            return true;
-        } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println("That slot is already booked for this room and date.");
-            } else {
-                e.printStackTrace();
-            }
-            return false;
-        }
-    }
-
-    public static void printStudyBookingsForPatron(String patronEmail) {
-        if (patronEmail == null || patronEmail.isBlank()) {
-            System.out.println("Email is required.");
-            return;
+            return out;
         }
         String sql = """
                 SELECT b.id, r.name, b.booking_date, b.slot_label
@@ -1485,27 +1766,133 @@ public class Database {
                 PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, patronEmail.trim());
             try (ResultSet rs = ps.executeQuery()) {
-                ConsoleUi.reportHeader("Your study room bookings");
-                int n = 0;
                 while (rs.next()) {
-                    n++;
-                    ConsoleUi.listItem("Booking #" + rs.getInt("id")
-                            + " | " + rs.getString("name")
-                            + " | " + rs.getString("booking_date")
-                            + " " + rs.getString("slot_label"));
-                }
-                if (n == 0) {
-                    ConsoleUi.muted("(No bookings.)");
+                    out.add(new StudyBookingRow(
+                            rs.getInt("id"),
+                            rs.getString("name"),
+                            LocalDate.parse(rs.getString("booking_date")),
+                            rs.getString("slot_label")));
                 }
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
+        return out;
+    }
+
+    /** Prints time slots for a room on a date; marks which are already booked. */
+    public static void printStudySlotsForRoom(int roomId, LocalDate bookingDate) {
+        String dateStr = bookingDate.toString();
+        List<String> taken = new ArrayList<>();
+        String q = "SELECT slot_label FROM study_room_bookings WHERE room_id = ? AND booking_date = ?";
+        try (Connection conn = getConnection();
+                PreparedStatement ps = conn.prepareStatement(q)) {
+            ps.setInt(1, roomId);
+            ps.setString(2, dateStr);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    taken.add(rs.getString("slot_label"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return;
+        }
+        ConsoleUi.reportHeader("Room #" + roomId + "  —  " + ConsoleUi.formatUkDate(bookingDate));
+        for (int i = 0; i < STUDY_TIME_SLOTS.length; i++) {
+            String slot = STUDY_TIME_SLOTS[i];
+            boolean booked = taken.contains(slot);
+            ConsoleUi.numberedLine(i + 1, slot + (booked ? "    (booked)" : "    (available)"));
+        }
+    }
+
+    /**
+     * Inserts a booking; UNIQUE(room, date, slot) rejects a second booking for the same slot.
+     * Booking date must be today or later.
+     */
+    public static boolean bookStudyRoom(int roomId, String patronEmail, LocalDate bookingDate, String slotLabel) {
+        if (patronEmail == null || patronEmail.isBlank()) {
+            ConsoleUi.warn("Patron email is required.");
+            return false;
+        }
+        if (!isStudySlotValid(slotLabel)) {
+            ConsoleUi.warn("Invalid time slot.");
+            return false;
+        }
+        String email = patronEmail.trim();
+        if (bookingDate.isBefore(LocalDate.now())) {
+            ConsoleUi.warn("Cannot book a date in the past.");
+            return false;
+        }
+        String dateStr = bookingDate.toString();
+        String patronCheck = "SELECT 1 FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
+        String roomCheck = "SELECT 1 FROM study_rooms WHERE id = ? LIMIT 1";
+        String insertSql = """
+                INSERT INTO study_room_bookings(room_id, patron_email, booking_date, slot_label, created_date)
+                VALUES(?, ?, ?, ?, ?)
+                """;
+        try (Connection conn = getConnection()) {
+            try (PreparedStatement pc = conn.prepareStatement(patronCheck)) {
+                pc.setString(1, email);
+                try (ResultSet rs = pc.executeQuery()) {
+                    if (!rs.next()) {
+                        ConsoleUi.warn("No patron registered with that email.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement rc = conn.prepareStatement(roomCheck)) {
+                rc.setInt(1, roomId);
+                try (ResultSet rs = rc.executeQuery()) {
+                    if (!rs.next()) {
+                        ConsoleUi.warn("Study room not found.");
+                        return false;
+                    }
+                }
+            }
+            try (PreparedStatement ins = conn.prepareStatement(insertSql)) {
+                ins.setInt(1, roomId);
+                ins.setString(2, email);
+                ins.setString(3, dateStr);
+                ins.setString(4, slotLabel.trim());
+                ins.setString(5, LocalDate.now().toString());
+                ins.executeUpdate();
+            }
+            ConsoleUi.ok("Study room booked: room #" + roomId + " on " + ConsoleUi.formatUkDate(bookingDate) + " "
+                    + slotLabel.trim() + ".");
+            return true;
+        } catch (SQLException e) {
+            if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
+                ConsoleUi.warn("That slot is already booked for this room and date.");
+            } else {
+                e.printStackTrace();
+            }
+            return false;
+        }
+    }
+
+    public static void printStudyBookingsForPatron(String patronEmail) {
+        if (patronEmail == null || patronEmail.isBlank()) {
+            ConsoleUi.warn("Email is required.");
+            return;
+        }
+        List<StudyBookingRow> rows = getStudyBookingsForPatron(patronEmail);
+        ConsoleUi.reportHeader("Your study room bookings");
+        if (rows.isEmpty()) {
+            ConsoleUi.muted("(No bookings.)");
+            return;
+        }
+        int i = 1;
+        for (StudyBookingRow r : rows) {
+            ConsoleUi.numberedLine(i, r.roomName + " | " + ConsoleUi.formatUkDate(r.bookingDate)
+                    + " " + r.slotLabel + "  (booking #" + r.id + ")");
+            i++;
+        }
     }
 
     public static boolean cancelStudyBooking(int bookingId, String patronEmail) {
         if (bookingId <= 0 || patronEmail == null || patronEmail.isBlank()) {
-            System.out.println("Booking id and patron email are required.");
+            ConsoleUi.warn("Booking id and patron email are required.");
             return false;
         }
         String sql = "DELETE FROM study_room_bookings WHERE id = ? AND LOWER(patron_email) = LOWER(?)";
@@ -1515,10 +1902,10 @@ public class Database {
             ps.setString(2, patronEmail.trim());
             int rows = ps.executeUpdate();
             if (rows == 1) {
-                System.out.println("Booking cancelled.");
+                ConsoleUi.ok("Booking cancelled.");
                 return true;
             }
-            System.out.println("No matching booking for that id and email.");
+            ConsoleUi.warn("No matching booking for that id and email.");
             return false;
         } catch (SQLException e) {
             e.printStackTrace();

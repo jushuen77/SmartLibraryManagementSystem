@@ -3,11 +3,15 @@ package data;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Terminal layout helpers: centered menus, consistent spacing, and readable status lines.
  */
 public final class ConsoleUi {
+
+    private static final DateTimeFormatter UK_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /** Text width between the vertical borders of a menu box. */
     private static final int INNER = 54;
@@ -77,7 +81,7 @@ public final class ConsoleUi {
         blank();
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
         System.out.println(panelLine("G4 Smart Library"));
-        System.out.println(panelLine("Catalog | Loans | Fines | Study rooms"));
+        System.out.println(panelLine("Catalog, loans, fines, study rooms"));
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
         blank();
     }
@@ -142,7 +146,7 @@ public final class ConsoleUi {
     }
 
     public static void info(String msg) {
-        System.out.println(leftPad() + "  i " + msg);
+        System.out.println(leftPad() + "  " + msg);
     }
 
     /** Pause between screens. */
@@ -170,5 +174,13 @@ public final class ConsoleUi {
     public static void readerControlsHint() {
         String prompt = "[n]ext  [p]rev  [q]uit: ";
         System.out.print(leftPad() + "  " + prompt);
+    }
+
+    /** Formats a date for display (dd/mm/yyyy). */
+    public static String formatUkDate(LocalDate date) {
+        if (date == null) {
+            return "";
+        }
+        return UK_DATE.format(date);
     }
 }
