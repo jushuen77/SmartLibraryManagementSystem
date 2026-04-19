@@ -2,10 +2,10 @@ import java.util.Scanner;
 
 import data.ConsoleUi;
 
-/*
- * Simple staff check before opening the librarian portal. Credentials are hardcoded for local/demo use only.
- * Replace with proper authentication for any real deployment.
- */
+
+// Simple staff check before opening the librarian portal. Credentials are hardcoded for local/demo use only.
+// Replace with proper authentication for any real deployment.
+
 public final class LibrarianLogin {
 
     private static final String STAFF_USERNAME = "librarian";

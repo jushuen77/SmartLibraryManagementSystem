@@ -4,16 +4,12 @@ import data.ConsoleUi;
 import data.Database;
 import data.UserSession;
 
-/*
- * Library member login (students, faculty, and public members share this flow).
- */
+
+// Library member login (students, faculty, and public members share this flow).
+
 public final class Login {
 
     private Login() {
-    }
-
-    private static void pressEnterToContinue(Scanner scn) {
-        ConsoleUi.pauseThenClear(scn);
     }
 
     public static boolean prompt(Scanner scn) {
@@ -39,7 +35,7 @@ public final class Login {
             return true;
         }
         ConsoleUi.warn("Sign-in failed: check your email or username and password, then try again.");
-        pressEnterToContinue(scn);
+        ConsoleUi.pauseThenClear(scn);
         return false;
     }
 }

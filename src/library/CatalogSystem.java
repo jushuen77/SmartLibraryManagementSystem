@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import data.Database;
 import data.InputValidation;
@@ -23,19 +24,18 @@ public final class CatalogSystem {
     }
 
     public static Map<String, List<LibraryItem>> organizeByGenre() {
-        Map<String, List<LibraryItem>> grouped = new LinkedHashMap<>();
-        for (LibraryItem item : allItems()) {
-            String genre = normalize(item.getGenre(), "Unknown Genre");
-            grouped.computeIfAbsent(genre, k -> new ArrayList<>()).add(item);
-        }
-        return grouped;
+        return groupItemsBy(LibraryItem::getGenre, "Unknown Genre");
     }
 
     public static Map<String, List<LibraryItem>> organizeByAuthor() {
+        return groupItemsBy(LibraryItem::getAuthor, "Unknown Author");
+    }
+
+    private static Map<String, List<LibraryItem>> groupItemsBy(Function<LibraryItem, String> key, String fallback) {
         Map<String, List<LibraryItem>> grouped = new LinkedHashMap<>();
         for (LibraryItem item : allItems()) {
-            String author = normalize(item.getAuthor(), "Unknown Author");
-            grouped.computeIfAbsent(author, k -> new ArrayList<>()).add(item);
+            String label = normalize(key.apply(item), fallback);
+            grouped.computeIfAbsent(label, k -> new ArrayList<>()).add(item);
         }
         return grouped;
     }

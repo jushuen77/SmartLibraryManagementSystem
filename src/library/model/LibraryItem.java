@@ -1,8 +1,5 @@
 package library.model;
 
-/**
- * Base type for catalog entries stored in {@code items} ({@code BOOK}, {@code DIGITAL}, {@code JOURNAL}).
- */
 public abstract class LibraryItem {
 
     private int id;
@@ -44,7 +41,6 @@ public abstract class LibraryItem {
         this.dailyFine = dailyFine;
     }
 
-    /** Value for the {@code item_type} column: BOOK, DIGITAL, or JOURNAL. */
     public abstract String getSqlItemType();
 
     public int getId() {

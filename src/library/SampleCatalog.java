@@ -1,8 +1,4 @@
-/*
- * Fake starter data so the app isn't empty on first run — sample books, journals, digital titles, and patrons.
- * Database.seedSampleDataIfEmpty() uses this data; digital items include short reader excerpts for the e-book viewer.
- * Edit titles or ISBNs here to change the default catalog.
- */
+// Sample starter rows, when the DB is still empty, seed runs once from here. After that the app uses real saved data. So basically fake run one time cuz wanna avoid the empty recorded input
 package library;
 
 import library.model.Book;
@@ -92,6 +88,27 @@ public final class SampleCatalog {
         Journal hist = new Journal("Past & Present — Social history quarterly", "Oxford University Press", "0031-2746", "History");
         hist.setLoanPolicy(28, 4, 0.50);
         list.add(hist);
+        Journal nejm = new Journal("The New England Journal of Medicine — Clinical updates", "Massachusetts Medical Society", "0028-4793", "Medicine");
+        nejm.setLoanPolicy(7, 2, 2.25);
+        list.add(nejm);
+        Journal bmj = new Journal("The BMJ — Evidence-based practice", "BMJ Publishing Group", "1756-1833", "Medicine");
+        bmj.setLoanPolicy(14, 3, 1.50);
+        list.add(bmj);
+        Journal cacm = new Journal("Communications of the ACM — Software engineering trends", "ACM", "0001-0782", "Computer science");
+        cacm.setLoanPolicy(14, 3, 1.00);
+        list.add(cacm);
+        Journal prl = new Journal("Physical Review Letters — Condensed matter highlights", "American Physical Society", "0031-9007", "Physics");
+        prl.setLoanPolicy(7, 2, 1.25);
+        list.add(prl);
+        Journal ai = new Journal("Artificial Intelligence — Planning & reasoning survey", "Elsevier", "0004-3702", "Computer science");
+        ai.setLoanPolicy(21, 3, 1.00);
+        list.add(ai);
+        Journal econometrica = new Journal("Econometrica — Econometrics monograph", "Wiley", "0012-9682", "Economics");
+        econometrica.setLoanPolicy(21, 4, 1.00);
+        list.add(econometrica);
+        Journal foreignAffairs = new Journal("Foreign Affairs — International relations review", "Council on Foreign Relations", "0015-7120", "Political science");
+        foreignAffairs.setLoanPolicy(28, 4, 0.75);
+        list.add(foreignAffairs);
         return list;
     }
 

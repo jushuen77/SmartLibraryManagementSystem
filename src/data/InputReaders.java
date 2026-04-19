@@ -8,10 +8,8 @@ public final class InputReaders {
     private InputReaders() {
     }
 
-    /**
-     * Reads a menu choice after {@link ConsoleUi#menuEnd()} (which prints {@code Choice: } without a newline).
-     * Retries on empty input, non-numeric input, or out-of-range values.
-     */
+    
+    //read menu input. if input wrong thing will prompt respective input error msg
     public static int readMenuInt(Scanner scn, int min, int max) {
         while (true) {
             String line = scn.nextLine().trim();
@@ -35,10 +33,7 @@ public final class InputReaders {
         }
     }
 
-    /**
-     * Reads an integer in {@code [min, max]} after a {@link ConsoleUi#fieldPrompt} (or similar) has already been
-     * printed. Re-prompts with {@code repromptLabel} on error.
-     */
+        //keep on reading the input from user from the console unitl it matches between the min and max value and reutn elese retunr error msg.
     public static int readIntInRange(Scanner scn, int min, int max, String repromptLabel) {
         while (true) {
             String line = scn.nextLine().trim();
@@ -62,33 +57,41 @@ public final class InputReaders {
         }
     }
 
-    public static int readPositiveInt(Scanner scn, String repromptLabel, int min, int max) {
-        return readIntInRange(scn, min, max, repromptLabel);
-    }
-
-    public static double readNonNegativeDouble(Scanner scn, String repromptLabel, double max) {
+    /** @param allowCancel if true, line {@code cancel} (any case) returns {@code null} */
+    private static Double readNonNegativeDoubleCore(Scanner scn, String repromptLabel, double max, boolean allowCancel) {
         while (true) {
             String line = scn.nextLine().trim();
             if (line.isEmpty()) {
-                ConsoleUi.warn("Enter a dollar amount using digits, for example 1.50 or 10.");
+                ConsoleUi.warn(allowCancel
+                        ? "Enter a dollar amount, or type cancel to abort this step."
+                        : "Enter a dollar amount using digits, for example 1.50 or 10.");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
+            }
+            if (allowCancel && "cancel".equalsIgnoreCase(line)) {
+                return null;
             }
             double v;
             try {
                 v = Double.parseDouble(line);
             } catch (NumberFormatException e) {
-                ConsoleUi.warn("That is not a valid amount. Use digits and at most one decimal point (example: 2.50).");
+                ConsoleUi.warn(allowCancel
+                        ? "That is not a valid amount. Use digits (and one decimal point if needed), or type cancel to abort."
+                        : "That is not a valid amount. Use digits and at most one decimal point (example: 2.50).");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             if (v < 0) {
-                ConsoleUi.warn("The amount cannot be negative. Enter zero or a positive number.");
+                ConsoleUi.warn(allowCancel
+                        ? "The amount cannot be negative. Enter a positive value or zero."
+                        : "The amount cannot be negative. Enter zero or a positive number.");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             if (v > max) {
-                ConsoleUi.warn("That amount is too high. The maximum allowed here is " + max + ".");
+                ConsoleUi.warn(allowCancel
+                        ? "That amount is too high. Enter at most " + max + ", or type cancel to abort."
+                        : "That amount is too high. The maximum allowed here is " + max + ".");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
@@ -96,10 +99,12 @@ public final class InputReaders {
         }
     }
 
-    /**
-     * Like {@link #readIntInRange} but entering {@code 0} alone cancels (returns {@code null}). Use only when the
-     * valid range does not include 0 as real data (e.g. loan days 1–365).
-     */
+    //to read the positive double/float value 有小数点的. then error msg if wrong input
+    public static double readNonNegativeDouble(Scanner scn, String repromptLabel, double max) {
+        return readNonNegativeDoubleCore(scn, repromptLabel, max, false);
+    }
+
+    //this is for when user input half way they can enter 0 to esc or type "cancel" to exit de and also to check whther their input is in range or not
     public static Integer readIntInRangeOrZeroCancel(Scanner scn, int min, int max, String repromptLabel) {
         while (true) {
             String line = scn.nextLine().trim();
@@ -126,41 +131,9 @@ public final class InputReaders {
         }
     }
 
-    /**
-     * Like {@link #readNonNegativeDouble} but entering {@code cancel} (any case) aborts (returns {@code null}).
-     * {@code 0} is still a valid amount.
-     */
+    //same thing but user may type cancel to abort (returns null)
     public static Double readNonNegativeDoubleOrCancel(Scanner scn, String repromptLabel, double max) {
-        while (true) {
-            String line = scn.nextLine().trim();
-            if (line.isEmpty()) {
-                ConsoleUi.warn("Enter a dollar amount, or type cancel to abort this step.");
-                ConsoleUi.fieldPrompt(repromptLabel);
-                continue;
-            }
-            if ("cancel".equalsIgnoreCase(line)) {
-                return null;
-            }
-            double v;
-            try {
-                v = Double.parseDouble(line);
-            } catch (NumberFormatException e) {
-                ConsoleUi.warn("That is not a valid amount. Use digits (and one decimal point if needed), or type cancel to abort.");
-                ConsoleUi.fieldPrompt(repromptLabel);
-                continue;
-            }
-            if (v < 0) {
-                ConsoleUi.warn("The amount cannot be negative. Enter a positive value or zero.");
-                ConsoleUi.fieldPrompt(repromptLabel);
-                continue;
-            }
-            if (v > max) {
-                ConsoleUi.warn("That amount is too high. Enter at most " + max + ", or type cancel to abort.");
-                ConsoleUi.fieldPrompt(repromptLabel);
-                continue;
-            }
-            return v;
-        }
+        return readNonNegativeDoubleCore(scn, repromptLabel, max, true);
     }
 
     private static Integer parseIntOrNull(String line) {

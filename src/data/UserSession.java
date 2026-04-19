@@ -2,9 +2,8 @@ package data;
 
 import library.model.PatronType;
 
-/**
- * Holds the signed-in library member (student, faculty, or public). Cleared on log out.
- */
+// Holds the signed-in library member (student, faculty, or public). Cleared on log out.
+
 public final class UserSession {
 
     private static String displayName;
@@ -38,7 +37,7 @@ public final class UserSession {
         return email;
     }
 
-    /** Student, faculty, or public member; defaults to {@link PatronType#PUBLIC} if unset. */
+    //set user to public patron if not set somehow idk also
     public static PatronType getMemberType() {
         return memberType != null ? memberType : PatronType.PUBLIC;
     }

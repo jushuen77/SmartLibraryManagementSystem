@@ -1,14 +1,12 @@
 package data;
 
-/**
- * ISBN checks for books (ISBN-10 or ISBN-13). Hyphens and spaces are ignored.
- */
+//ISBN checks for books (ISBN-10 or ISBN-13). Hyphens and spaces are ignored.
 public final class InputValidation {
 
     private InputValidation() {
     }
 
-    /** Removes spaces and hyphens; uppercases trailing X for ISBN-10. */
+    //Removes spaces and hyphens; uppercases trailing X for ISBN-10. 
     public static String normalizeIsbn(String raw) {
         if (raw == null) {
             return "";
@@ -28,10 +26,8 @@ public final class InputValidation {
         return sb.toString();
     }
 
-    /**
-     * @return {@code null} if the value is a valid ISBN-10 or ISBN-13 (including check digit), otherwise a short
-     *         reason for the user.
-     */
+   
+    //if user enter valid isbn number then return eles return them error msg.
     public static String validateIsbn(String raw) {
         String s = normalizeIsbn(raw);
         if (s.isEmpty()) {

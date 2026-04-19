@@ -12,7 +12,6 @@ import library.SampleCatalog;
 import library.model.Book;
 import library.model.BookReservation;
 import library.model.DigitalResource;
-import library.model.EBook;
 import library.model.ItemStatus;
 import library.model.Journal;
 import library.model.LibraryItem;
@@ -29,9 +28,6 @@ public class Database {
     // users.db lives next to wherever you run java — if you lose it, you did not lose the code, only your fines history
     private static final String url = "jdbc:sqlite:users.db";
 
-    /** Default loan length (days); real per-book rules use the row's loan_duration_days when borrowing. */
-    public static final int LOAN_DAYS = 14;
-
     // Opens the db file; PRAGMA foreign_keys = ON so SQLite actually enforces "this patron id exists, right?"
     private static Connection getConnection() throws SQLException {
         Connection conn = DriverManager.getConnection(url);
@@ -41,11 +37,8 @@ public class Database {
         return conn;
     }
 
-    /**
-     * Bootstraps every table and index. IF NOT EXISTS allows safe runs on every startup without dropping existing data.
-     * After DDL we seed empty tables and backfill optional columns (reader text, etc.).
-     * Think of it as moving day: we only unpack boxes if the shelves are empty.
-     */
+    
+    //   Bootstraps every table and index. IF NOT EXISTS allows safe runs on every startup without losing previous data  
     public static void createTable() {
         // --- Who are you? (accounts + patrons) ---
         String usersTable = """
@@ -66,7 +59,6 @@ public class Database {
                 );
                 """;
 
-        // The actual stuff on shelves (and some pretend shelves for digital rows)
         String itemsTable = """
                 CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,7 +74,6 @@ public class Database {
                 );
                 """;
 
-        // Someone walked out with a book; return_date null = "they still have it (hopefully)"
         String loansTable = """
                 CREATE TABLE IF NOT EXISTS loans (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +85,6 @@ public class Database {
                 );
                 """;
 
-        // "Save my spot" when the only copy is out — logic lives in addBookReservation(), not in the table name
         String reservationsTable = """
                 CREATE TABLE IF NOT EXISTS book_reservations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,7 +96,6 @@ public class Database {
                 );
                 """;
 
-        // You cannot loan the same physical copy to two people unless physics breaks. SQLite agrees.
         String activeLoanIndex = """
                 CREATE UNIQUE INDEX IF NOT EXISTS idx_loans_one_active_per_item
                 ON loans(item_id) WHERE return_date IS NULL;
@@ -117,7 +106,6 @@ public class Database {
                 ON book_reservations(item_id, requester_email) WHERE status = 'PENDING';
                 """;
 
-        // Where polite reminders become numbers with dollar signs
         String finesTable = """
                 CREATE TABLE IF NOT EXISTS fines (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,7 +119,6 @@ public class Database {
                 );
                 """;
 
-        // Optional: fight over chairs in a civilized way (one booking per room/slot/day)
         String studyRoomsTable = """
                 CREATE TABLE IF NOT EXISTS study_rooms (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,7 +139,7 @@ public class Database {
                 );
                 """;
 
-        try (Connection conn = getConnection();//this is to get connection for the database
+        try (Connection conn = getConnection();//this is to get connection for the database then prompt error msg if unsuccesuful
                 Statement stmt = conn.createStatement()) {
             stmt.execute(usersTable);
             stmt.execute(patronsTable);
@@ -183,12 +170,13 @@ public class Database {
         }
     }
 
+    //constant study room booking time slots
     public static final String[] STUDY_TIME_SLOTS = {
             "09:00-10:00", "10:00-11:00", "11:00-12:00", "12:00-13:00",
             "13:00-14:00", "14:00-15:00", "15:00-16:00", "16:00-17:00"
     };
 
-    // Gentle migrations: if someone's DB predates a column, we ALTER; if not, we skip and nobody cries
+    //alter the table if chagnes are need to be made, something liek that
     private static void ensureItemsPolicyColumns(Statement stmt) throws SQLException {
         if (!hasColumn("items", "loan_duration_days")) {
             stmt.execute("ALTER TABLE items ADD COLUMN loan_duration_days INTEGER NOT NULL DEFAULT 14");
@@ -201,14 +189,13 @@ public class Database {
         }
     }
 
-    // So digital rows can smuggle a pretend chapter inside the database for the console reader
     private static void ensureItemsReaderContentColumn(Statement stmt) throws SQLException {
         if (!hasColumn("items", "reader_content")) {
             stmt.execute("ALTER TABLE items ADD COLUMN reader_content TEXT");
         }
     }
 
-    // introspect sqlite schema — used so we don't run ALTER twice
+    //this method is to make sure that we dont alter sql twice by accident or some shit
     private static boolean hasColumn(String table, String column) throws SQLException {
         try (Connection conn = getConnection();
                 PreparedStatement ps = conn.prepareStatement("PRAGMA table_info(" + table + ")");
@@ -233,9 +220,7 @@ public class Database {
         }
     }
 
-    /**
-     * Inserts {@link SampleCatalog} patrons and items when those tables are empty (Harry Potter and other examples).
-     */
+   
     public static void seedSampleDataIfEmpty() {
         try {
             if (countTable("patrons") == 0) {
@@ -260,9 +245,7 @@ public class Database {
         }
     }
 
-    /**
-     * Ensures every {@code users} row has a matching {@code patrons} row (fixes accounts created before this link existed).
-     */
+    //to make sure user and patrons matches, if user's patron is missig will match for user
     public static void syncPatronsFromUsersIfMissing() {
         String sql = """
                 INSERT INTO patrons(name, email, patron_type)
@@ -271,7 +254,7 @@ public class Database {
                     SELECT 1 FROM patrons p WHERE LOWER(TRIM(p.email)) = LOWER(TRIM(u.email))
                 )
                 """;
-        try (Connection conn = getConnection();
+        try (Connection conn = getConnection();//get connection to sql again
                 Statement st = conn.createStatement()) {
             int n = st.executeUpdate(sql);
             if (n > 0) {
@@ -282,7 +265,7 @@ public class Database {
         }
     }
 
-    // First launch: we invent four rooms. After that, your furniture is your problem.
+    //set the limit to study room, set study roomd details and etc into sql
     private static void seedStudyRoomsIfEmpty() {
         String countSql = "SELECT COUNT(*) FROM study_rooms";
         String insertSql = "INSERT INTO study_rooms(name, capacity) VALUES(?, ?)";
@@ -305,16 +288,14 @@ public class Database {
         }
     }
 
+    //to insert rooms
     private static void insertRoom(PreparedStatement ps, String name, int capacity) throws SQLException {
         ps.setString(1, name);
         ps.setInt(2, capacity);
         ps.executeUpdate();
     }
 
-    /**
-     * For databases created before reader_content existed: fill sample excerpts by ISBN.
-     * Rows that already have non-empty reader_content are left unchanged.
-     */
+    //to loop through the sample digital and update it if the content is blank or missing
     public static void backfillDigitalReaderContentFromSamples() {
         String updateSql = """
                 UPDATE items SET reader_content = ?
@@ -337,7 +318,7 @@ public class Database {
         }
     }
 
-    /** Persists a patron and sets {@link Patron#setId(int)} from the database. */
+    //save the patrons details into sql
     public static boolean savePatron(Patron patron) {
         String sql = "INSERT INTO patrons(name, email, patron_type) VALUES(?, ?, ?)";
         try (Connection conn = getConnection();
@@ -362,7 +343,7 @@ public class Database {
         }
     }
 
-    /** Inserts any LibraryItem; DigitalResource may carry reader_content for the e-reader feature. */
+    //save items such as book, journals and etc blah blah blah
     public static boolean saveItem(LibraryItem item) {
         String readerContent = null;
         if (item instanceof DigitalResource dr) {
@@ -397,10 +378,7 @@ public class Database {
         }
     }
 
-    /**
-     * Inserts a row into {@code users}. Password is stored as provided (hash in production).
-     * @return true if a row was inserted
-     */
+   //create new user get name email and password and what not 67
     public static boolean addUser(String name, String email, String password) {
         String sql = "INSERT INTO users(name, email, password) VALUES(?, ?, ?)";
 
@@ -421,9 +399,7 @@ public class Database {
         }
     }
 
-    /**
-     * Validates patron login and returns {@code [display name, canonical email]} from {@code users}, or {@code null}.
-     */
+    //user can either log in with usernmae or email so if log in with email will use this method to find their emmail. Basically user may enter username or email so reutnr their name and email if password matches
     public static String[] findUserNameEmailIfValidCredentials(String emailOrName, String password) {
         if (password == null || emailOrName == null || emailOrName.isBlank()) {
             return null;
@@ -447,16 +423,7 @@ public class Database {
         }
     }
 
-    /**
-     * Checks {@code users} for a matching name or email and password.
-     */
-    public static boolean authenticate(String emailOrName, String password) {
-        return findUserNameEmailIfValidCredentials(emailOrName, password) != null;
-    }
-
-    /**
-     * After a new {@code users} row, ensure a matching {@code patrons} row so loans and study bookings work.
-     */
+   //exit if name or email is missing. else set user membertype to public as default. Then exit and save and whatnot
     public static void ensurePatronForNewUser(String name, String email, PatronType memberType) {
         if (name == null || email == null || email.isBlank()) {
             return;
@@ -477,12 +444,7 @@ public class Database {
         }
     }
 
-    /** Same as {@link #ensurePatronForNewUser(String, String, PatronType)} with {@link PatronType#PUBLIC}. */
-    public static void ensurePatronForNewUser(String name, String email) {
-        ensurePatronForNewUser(name, email, PatronType.PUBLIC);
-    }
-
-    /** Resolves {@link PatronType} from the {@code patrons} table (library member category). */
+   //seach for the user patron type if found retunr the necessary patron type if not found set to public as default again.
     public static PatronType getPatronTypeForEmail(String email) {
         if (email == null || email.isBlank()) {
             return PatronType.PUBLIC;
@@ -528,6 +490,7 @@ public class Database {
         return null;
     }
 
+    //check is user exists or nt.
     public static boolean userExists(String name, String email) {
         String sql = "SELECT 1 FROM users WHERE name = ? OR email = ? LIMIT 1";
 
@@ -543,32 +506,12 @@ public class Database {
         }
     }
 
+    //check if email format is valid or not 
     public static boolean isValidEmail(String email) {
         return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     }
 
-    /** STUDENT, FACULTY, or PUBLIC */
-    public static void addPatron(String name, String email, String patronType) {
-        String sql = "INSERT INTO patrons(name, email, patron_type) VALUES(?, ?, ?)";
-        try (Connection conn = getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, name);
-            pstmt.setString(2, email);
-            pstmt.setString(3, patronType.toUpperCase());
-            pstmt.executeUpdate();
-            ConsoleUi.ok("Patron registered.");
-        } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
-                ConsoleUi.ok("Email already registered as a patron.");
-            } else if (e.getMessage() != null && e.getMessage().contains("CHECK constraint")) {
-                ConsoleUi.ok("Invalid patron type. Use STUDENT, FACULTY, or PUBLIC.");
-            } else {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /** Loads every patron row as {@link Patron} objects. */
+    //get all the patron types from sql table and returns it as a list of patron objects. To show all registered lirbary members/
     public static List<Patron> getAllPatrons() {
         List<Patron> patrons = new ArrayList<>();
         String sql = "SELECT id, name, email, patron_type FROM patrons ORDER BY id";
@@ -588,7 +531,7 @@ public class Database {
         return patrons;
     }
 
-    /** Single patron row by email (library profile), or {@code null}. */
+    //seach up one patron by emial if not found then return null
     public static Patron getPatronByEmail(String email) {
         if (email == null || email.isBlank()) {
             return null;
@@ -623,31 +566,7 @@ public class Database {
         }
     }
 
-    /** itemType: BOOK, JOURNAL, DIGITAL */
-    public static void addItem(String itemType, String title, String author, String isbn, String genre) {
-        String sql = """
-                INSERT INTO items(item_type, title, author, isbn, genre, status, loan_duration_days, borrowing_limit, daily_fine, reader_content)
-                VALUES(?, ?, ?, ?, ?, 'AVAILABLE', 14, 5, 1.0, NULL)
-                """;
-        try (Connection conn = getConnection();
-                PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, itemType.toUpperCase());
-            pstmt.setString(2, title);
-            pstmt.setString(3, author == null || author.isBlank() ? null : author);
-            pstmt.setString(4, isbn == null || isbn.isBlank() ? null : isbn);
-            pstmt.setString(5, genre == null || genre.isBlank() ? null : genre);
-            pstmt.executeUpdate();
-            ConsoleUi.ok("Item added to catalog.");
-        } catch (SQLException e) {
-            if (e.getMessage() != null && e.getMessage().contains("CHECK constraint")) {
-                ConsoleUi.ok("Invalid item type. Use BOOK, JOURNAL, or DIGITAL.");
-            } else {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    /** Librarian: add a new book acquisition with custom policy. */
+    // Librarian: add a new book acquisition with custom policy. 
     public static boolean addBookAcquisition(
             String title,
             String author,
@@ -665,9 +584,8 @@ public class Database {
         return ok;
     }
 
-    /**
-     * Mark a copy LOST/damaged. Any open loan for that item is closed first so loans stay consistent with inventory.
-     */
+    
+    //remove the damage book. search up the damage book with isbn then takes it out from the sql database
     public static boolean removeDamagedBookByIsbn(String isbn) {
         if (isbn == null || isbn.isBlank()) {
             ConsoleUi.ok("ISBN is required.");
@@ -725,7 +643,7 @@ public class Database {
         }
     }
 
-    /** Lists physical books currently marked LOST (for tracking and replacement). */
+    //list all the lost books out
     public static void printLostBooks() {
         String sql = """
                 SELECT id, title, author, isbn, genre
@@ -756,7 +674,7 @@ public class Database {
         }
     }
 
-    /** Fines with a remaining balance (overdue and other recorded fines). */
+    //same thing as the lost books but for outstanding fines.
     public static void printOutstandingFines() {
         String sql = """
                 SELECT f.id, p.name, p.email, i.title, f.amount, f.amount_paid,
@@ -795,10 +713,7 @@ public class Database {
         }
     }
 
-    /**
-     * Staff types how much the patron paid; we cap at remaining balance (no accidental negative debt universe).
-     * @return true if money actually moved
-     */
+    //for librarian staff to record fine payment and save it into the sql database.
     public static boolean recordFinePayment(int fineId, double payment) {
         if (fineId <= 0 || payment <= 0) {
             ConsoleUi.ok("Fine id and a positive payment amount are required.");
@@ -854,7 +769,7 @@ public class Database {
         }
     }
 
-    /** Librarian: inventory audit summary. */
+    //same thing as the lost book again. But for invetory auditting
     public static void printInventoryAudit() {
         String byStatus = """
                 SELECT status, COUNT(*) AS total
@@ -890,7 +805,20 @@ public class Database {
         }
     }
 
-    /** Loads physical books ({@code item_type = BOOK}) from the database. */
+    private static Book mapBookFromResultSet(ResultSet rs) throws SQLException {
+        return new Book(
+                rs.getInt("id"),
+                rs.getString("title"),
+                rs.getString("author"),
+                rs.getString("isbn"),
+                rs.getString("genre"),
+                ItemStatus.valueOf(rs.getString("status")),
+                rs.getInt("loan_duration_days"),
+                rs.getInt("borrowing_limit"),
+                rs.getDouble("daily_fine"));
+    }
+
+    // Loads physical booksfrom the database.
     public static List<Book> getAllBooks() {
         List<Book> books = new ArrayList<>();
         String sql = """
@@ -904,16 +832,7 @@ public class Database {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                books.add(new Book(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("author"),
-                        rs.getString("isbn"),
-                        rs.getString("genre"),
-                        ItemStatus.valueOf(rs.getString("status")),
-                        rs.getInt("loan_duration_days"),
-                        rs.getInt("borrowing_limit"),
-                        rs.getDouble("daily_fine")));
+                books.add(mapBookFromResultSet(rs));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -921,34 +840,7 @@ public class Database {
         return books;
     }
 
-    /** Loads digital books ({@code item_type = DIGITAL}) from the database. */
-    public static List<EBook> getAllEBooks() {
-        List<EBook> ebooks = new ArrayList<>();
-        String sql = """
-                SELECT id, title, author, isbn, genre, status
-                FROM items
-                WHERE item_type = 'DIGITAL'
-                ORDER BY id
-                """;
-        try (Connection conn = getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                ebooks.add(new EBook(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("author"),
-                        rs.getString("isbn"),
-                        rs.getString("genre"),
-                        ItemStatus.valueOf(rs.getString("status"))));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return ebooks;
-    }
-
-    /** Loads journals ({@code item_type = JOURNAL}) from the database. */
+    // Loads journals from the database.
     public static List<Journal> getAllJournals() {
         List<Journal> journals = new ArrayList<>();
         String sql = """
@@ -979,7 +871,7 @@ public class Database {
         return journals;
     }
 
-    /** Loads digital resources ({@code item_type = DIGITAL}) from the database. */
+    // Loads digital resources from the database.
     public static List<DigitalResource> getAllDigitalResources() {
         List<DigitalResource> resources = new ArrayList<>();
         String sql = """
@@ -1011,7 +903,7 @@ public class Database {
         return resources;
     }
 
-    /** Loads all catalog items as concrete item classes. */
+    //Loads all catalog items as concrete item classes.
     public static List<LibraryItem> getAllCatalogItems() {
         List<LibraryItem> items = new ArrayList<>();
         String sql = """
@@ -1057,10 +949,8 @@ public class Database {
         return items;
     }
 
-    /**
-     * Borrow: flip book to ON_LOAN, insert loan, respect loan length and "how many times can you borrow this title" caps.
-     * One transaction — if the JVM trips, you do not get a Schrödinger's checkout.
-     */
+    
+    //basically borrow item, when items are borrow wil change to ON_LOAN, then insert loan. Then check if user got reach the maximum borrowing limit for the respective user ot not if dont have proceed if have then prompt error msg lo
     public static boolean borrowItem(int patronId, int itemId) {
         LocalDate issue = LocalDate.now();
 
@@ -1169,7 +1059,7 @@ public class Database {
         }
     }
 
-    /** Borrows a book using patron email and book ISBN. */
+    //Borrows a book using patron email and book ISBN.
     public static boolean borrowBookByPatronEmailAndIsbn(String patronEmail, String isbn) {
         if (patronEmail == null || patronEmail.isBlank() || isbn == null || isbn.isBlank()) {
             ConsoleUi.warn("Both patron email and book ISBN are required to borrow.");
@@ -1216,54 +1106,7 @@ public class Database {
         }
     }
 
-    /** Borrows a book using patron email and exact book title. */
-    public static boolean borrowBookByPatronEmailAndTitle(String patronEmail, String title) {
-        if (patronEmail == null || patronEmail.isBlank() || title == null || title.isBlank()) {
-            ConsoleUi.warn("Both patron email and book title are required to borrow by title.");
-            return false;
-        }
-
-        String patronSql = "SELECT id FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
-        String itemSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND title = ? LIMIT 1";
-
-        try (Connection conn = getConnection()) {
-            Integer patronId = null;
-            Integer itemId = null;
-
-            try (PreparedStatement patronStmt = conn.prepareStatement(patronSql)) {
-                patronStmt.setString(1, patronEmail.trim());
-                try (ResultSet rs = patronStmt.executeQuery()) {
-                    if (rs.next()) {
-                        patronId = rs.getInt("id");
-                    }
-                }
-            }
-
-            try (PreparedStatement itemStmt = conn.prepareStatement(itemSql)) {
-                itemStmt.setString(1, title.trim());
-                try (ResultSet rs = itemStmt.executeQuery()) {
-                    if (rs.next()) {
-                        itemId = rs.getInt("id");
-                    }
-                }
-            }
-
-            if (patronId == null) {
-                ConsoleUi.warn("Your sign-in email is not on file as a library member. Register first or ask staff to link your account.");
-                return false;
-            }
-            if (itemId == null) {
-                ConsoleUi.warn("No book in the catalog has that exact title. Check spelling or use ISBN.");
-                return false;
-            }
-            return borrowItem(patronId, itemId);
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /** Returns available books for UI selection. */
+    // Returns available books for UI selection.
     public static List<Book> getAvailableBooks() {
         List<Book> books = new ArrayList<>();
         String sql = """
@@ -1276,16 +1119,7 @@ public class Database {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)) {
             while (rs.next()) {
-                books.add(new Book(
-                        rs.getInt("id"),
-                        rs.getString("title"),
-                        rs.getString("author"),
-                        rs.getString("isbn"),
-                        rs.getString("genre"),
-                        ItemStatus.valueOf(rs.getString("status")),
-                        rs.getInt("loan_duration_days"),
-                        rs.getInt("borrowing_limit"),
-                        rs.getDouble("daily_fine")));
+                books.add(mapBookFromResultSet(rs));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -1293,7 +1127,7 @@ public class Database {
         return books;
     }
 
-    /** Available books whose title contains the query (case-insensitive). */
+    //list or find available books to be borrowed
     public static List<Book> findAvailableBooksByTitleLike(String query) {
         List<Book> books = new ArrayList<>();
         if (query == null || query.isBlank()) {
@@ -1310,16 +1144,7 @@ public class Database {
             ps.setString(1, query.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    books.add(new Book(
-                            rs.getInt("id"),
-                            rs.getString("title"),
-                            rs.getString("author"),
-                            rs.getString("isbn"),
-                            rs.getString("genre"),
-                            ItemStatus.valueOf(rs.getString("status")),
-                            rs.getInt("loan_duration_days"),
-                            rs.getInt("borrowing_limit"),
-                            rs.getDouble("daily_fine")));
+                    books.add(mapBookFromResultSet(rs));
                 }
             }
         } catch (SQLException e) {
@@ -1328,7 +1153,7 @@ public class Database {
         return books;
     }
 
-    /** One row the patron currently has on loan (physical book). */
+    //uses a list so it will show like here are our current load and choose one to return instead of diggint through the sql database again. Waste RAM bro
     public static final class ActiveBookLoan {
         public final int itemId;
         public final String title;
@@ -1345,6 +1170,7 @@ public class Database {
         }
     }
 
+    //show the books that the user is still holding on to. Then sorted by dude date soonest. 
     public static List<ActiveBookLoan> getActiveBookLoansForPatron(String patronEmail) {
         List<ActiveBookLoan> out = new ArrayList<>();
         if (patronEmail == null || patronEmail.isBlank()) {
@@ -1377,24 +1203,8 @@ public class Database {
         return out;
     }
 
-    public static List<ActiveBookLoan> findActiveBookLoansForPatronByTitleLike(String patronEmail, String titleQuery) {
-        List<ActiveBookLoan> all = getActiveBookLoansForPatron(patronEmail);
-        if (titleQuery == null || titleQuery.isBlank()) {
-            return all;
-        }
-        String q = titleQuery.trim().toLowerCase();
-        List<ActiveBookLoan> out = new ArrayList<>();
-        for (ActiveBookLoan row : all) {
-            if (row.title != null && row.title.toLowerCase().contains(q)) {
-                out.add(row);
-            }
-        }
-        return out;
-    }
-
-    /**
-     * Returns a copy only if this patron has it on loan (prevents returning someone else's checkout).
-     */
+    
+    // Returns a copy only if this patron has it on loan this is to prevents returning someone else's checkout by accident
     public static boolean returnBookForPatronByItemId(String patronEmail, int itemId) {
         if (patronEmail == null || patronEmail.isBlank()) {
             ConsoleUi.warn("Patron email is required.");
@@ -1423,10 +1233,10 @@ public class Database {
         return returnItem(itemId);
     }
 
-    /** Patron returns a book they borrowed, matched by ISBN. */
+    // Patron returns a book they borrowed, matched by ISBN.
     public static boolean returnBookByPatronEmailAndIsbn(String patronEmail, String isbn) {
         if (patronEmail == null || patronEmail.isBlank() || isbn == null || isbn.isBlank()) {
-            ConsoleUi.warn("Both patron email and book ISBN are required to borrow.");
+            ConsoleUi.warn("Both patron email and book ISBN are required to return.");
             return false;
         }
         String sql = """
@@ -1453,33 +1263,7 @@ public class Database {
         }
     }
 
-    /** ISBN → item id → same as returnItem() (wrapper for the console UI). */
-    public static boolean returnBookByIsbn(String isbn) {
-        if (isbn == null || isbn.isBlank()) {
-            ConsoleUi.ok("ISBN is required.");
-            return false;
-        }
-        String sql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
-        try (Connection conn = getConnection();
-                PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, isbn.trim());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    ConsoleUi.ok("No book found with that ISBN.");
-                    return false;
-                }
-                return returnItem(rs.getInt("id"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    /**
-     * Return: close loan, book back to AVAILABLE. If the due date is a distant memory, we also insert a fine row.
-     * Same transaction — the money reminder and the shelf update arrive together, like a polite ambush.
-     */
+    //BASICALLY means that this copy of item is being return or handed back to the library so the system will update the db accordingly. Then go sql lo. if pass due date then fine the user ez.
     public static boolean returnItem(int itemId) {
         LocalDate today = LocalDate.now();
         try (Connection conn = getConnection()) {
@@ -1562,7 +1346,7 @@ public class Database {
         }
     }
 
-    /** Queue for a book that is already out — no point reserving air when the copy is sitting on the shelf. */
+    //book reservatiuon thing for user to resever their books
     public static boolean addBookReservation(BookReservation reservation) {
         String checkSql = "SELECT status FROM items WHERE id = ? AND item_type = 'BOOK' LIMIT 1";
         String insertSql = """
@@ -1608,9 +1392,8 @@ public class Database {
         }
     }
 
-    // ========== Study room booking (optional feature) ==========
-    // App asks questions; we say "no" if the slot is taken or the patron is imaginary.
-
+   
+    //study room booking feature. this is to check whether the slot is valid or not
     public static boolean isStudySlotValid(String slotLabel) {
         if (slotLabel == null) {
             return false;
@@ -1624,7 +1407,7 @@ public class Database {
         return false;
     }
 
-    /** Room row for numbered pick lists in the console UI. */
+    //Room row for numbered pick lists in the console UI
     public static final class StudyRoomRow {
         public final int id;
         public final String name;
@@ -1652,20 +1435,7 @@ public class Database {
         return out;
     }
 
-    public static void printStudyRooms() {
-        ConsoleUi.reportHeader("Study rooms");
-        List<StudyRoomRow> rooms = getStudyRoomsList();
-        int i = 1;
-        for (StudyRoomRow r : rooms) {
-            ConsoleUi.numberedLine(i, "Room #" + r.id + " | " + r.name + " | seats: " + r.capacity);
-            i++;
-        }
-        if (rooms.isEmpty()) {
-            ConsoleUi.muted("(No rooms configured.)");
-        }
-    }
-
-    /** One study booking for the signed-in member (used for list + cancel flows). */
+    //AGAIN BASICALLY pacakges one study room reservaion tgt for easier display
     public static final class StudyBookingRow {
         public final int id;
         public final String roomName;
@@ -1680,6 +1450,7 @@ public class Database {
         }
     }
 
+    //loads the top method into a list then return it. again basically its like show my study room reservations then a the list will be printed out
     public static List<StudyBookingRow> getStudyBookingsForPatron(String patronEmail) {
         List<StudyBookingRow> out = new ArrayList<>();
         if (patronEmail == null || patronEmail.isBlank()) {
@@ -1710,7 +1481,7 @@ public class Database {
         return out;
     }
 
-    /** Prints time slots for a room on a date; marks which are already booked. */
+    //Prints time slots for a room on a date and marks which are already booked.
     public static void printStudySlotsForRoom(int roomId, LocalDate bookingDate) {
         String dateStr = bookingDate.toString();
         List<String> taken = new ArrayList<>();
@@ -1736,10 +1507,7 @@ public class Database {
         }
     }
 
-    /**
-     * Inserts a booking; UNIQUE(room, date, slot) rejects a second booking for the same slot.
-     * Booking date must be today or later.
-     */
+    //booking for study room. then must book early early lah. have one day window to book if not cannot book lo. and also check whther user email is valid for booking or not eles return respective error msg.
     public static boolean bookStudyRoom(int roomId, String patronEmail, LocalDate bookingDate, String slotLabel) {
         if (patronEmail == null || patronEmail.isBlank()) {
             ConsoleUi.warn("Patron email is required.");
@@ -1801,6 +1569,7 @@ public class Database {
         }
     }
 
+    //print out the study room booking for user when they request
     public static void printStudyBookingsForPatron(String patronEmail) {
         if (patronEmail == null || patronEmail.isBlank()) {
             ConsoleUi.warn("Email is required.");
@@ -1820,6 +1589,7 @@ public class Database {
         }
     }
 
+    //for cancelling study booking room check with sql de. get their emial and id and what not then check lo
     public static boolean cancelStudyBooking(int bookingId, String patronEmail) {
         if (bookingId <= 0 || patronEmail == null || patronEmail.isBlank()) {
             ConsoleUi.warn("Booking id and patron email are required.");

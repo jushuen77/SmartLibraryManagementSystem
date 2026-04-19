@@ -17,11 +17,6 @@ public class DigitalResource extends LibraryItem {
         this.readerContent = null;
     }
 
-    public DigitalResource(int id, String title, String author, String isbn, String genre, ItemStatus status) {
-        super(id, title, author, isbn, genre, status);
-        this.readerContent = null;
-    }
-
     public DigitalResource(
             int id,
             String title,

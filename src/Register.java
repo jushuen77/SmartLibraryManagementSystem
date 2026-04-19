@@ -6,16 +6,11 @@ import data.Database;
 import data.InputReaders;
 import library.model.PatronType;
 
-/*
- * Sign-up for library members (student, faculty, or public). Creates both a login and a patron record.
- */
+
+// Sign-up for library members (student, faculty, or public). Creates both a login and a patron record.
 public final class Register {
 
     private Register() {
-    }
-
-    private static void pressEnterToContinue(Scanner scn) {
-        ConsoleUi.pauseThenClear(scn);
     }
 
     public static void prompt(Scanner scn) {
@@ -48,7 +43,7 @@ public final class Register {
 
         if (!password.equals(conPassword)) {
             ConsoleUi.warn("The password and confirmation do not match. Re-enter them so both fields are identical.");
-            pressEnterToContinue(scn);
+            ConsoleUi.pauseThenClear(scn);
             return;
         }
 
@@ -56,12 +51,12 @@ public final class Register {
             ConsoleUi.warn("That email does not look valid. Use the form name@provider (for example you@school.edu).");
             System.out.printf("\t\t\tEmail format is <name> + @ + your email provider!! FAH");
             System.out.println();
-            pressEnterToContinue(scn);
+            ConsoleUi.pauseThenClear(scn);
             return;
         }
         if (Database.userExists(name, email)) {
             ConsoleUi.warn("An account already uses that name or email. Sign in instead, or use a different email.");
-            pressEnterToContinue(scn);
+            ConsoleUi.pauseThenClear(scn);
             return;
         }
 

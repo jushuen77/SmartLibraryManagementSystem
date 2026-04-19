@@ -7,9 +7,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
 
-/**
- * Terminal layout helpers: centered menus, consistent spacing, and readable status lines.
- */
+//terminal layout de formatting
 public final class ConsoleUi {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
@@ -30,10 +28,7 @@ public final class ConsoleUi {
         return repeat('\u2500', INNER + 2);
     }
 
-    /**
-     * Tries to read current Windows console width via `mode con`.
-     * Falls back to 120 when unknown.
-     */
+    //try to read the current window like size dimension. if cannot read thne just use 120
     private static int detectTerminalWidth() {
         try {
             Process p = new ProcessBuilder("cmd", "/c", "mode con").redirectErrorStream(true).start();
@@ -57,14 +52,14 @@ public final class ConsoleUi {
         return 120;
     }
 
-    /** Left margin that centers the boxed UI region as a whole. */
+    //left padding for the main ui. Using private cuz dont wanna accidentally edit it by accident.
     private static String leftPad() {
         int uiWidth = INNER + 6; // borders + side spaces
         int pad = Math.max(0, (TERMINAL_WIDTH - uiWidth) / 2);
         return repeat(' ', pad);
     }
 
-    /** Pads/truncates one line inside a menu panel. */
+    // Pads/truncates one line inside a menu panel.
     private static String panelLine(String text) {
         String t = text == null ? "" : text;
         if (t.length() > INNER) {
@@ -77,10 +72,7 @@ public final class ConsoleUi {
         System.out.println();
     }
 
-    /**
-     * Clears the terminal so the next screen starts without leftover output.
-     * Uses {@code cls} on Windows; ANSI erase on other OSes; falls back to blank lines if those fail.
-     */
+    //clear screen method so the display looks cleaner generally
     public static void clearScreen() {
         try {
             String os = System.getProperty("os.name", "").toLowerCase();
@@ -97,7 +89,7 @@ public final class ConsoleUi {
         }
     }
 
-    /** Waits for Enter, then clears the terminal (use after errors or full-screen messages). */
+    //this is to wait for user to press enter then only clear screen der
     public static void pauseThenClear(Scanner scn) {
         pressEnterHint();
         if (scn != null) {
@@ -106,7 +98,7 @@ public final class ConsoleUi {
         clearScreen();
     }
 
-    /** Small welcome strip at startup. */
+    //welcome banner msg
     public static void welcomeBanner() {
         blank();
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
@@ -115,7 +107,7 @@ public final class ConsoleUi {
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
     }
 
-    /** Top of a numbered menu: title row + separator under it. */
+    //Top of a numbered menu: title row + separator under it. 
     public static void menuStart(String title) {
         blank();
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
@@ -127,23 +119,18 @@ public final class ConsoleUi {
         System.out.println(panelLine(String.format("%d) %s", num, label)));
     }
 
-    /** Bottom border + choice prompt (call after all menuOption lines). */
+    //Bottom border + choice prompt (call after all menuOption lines). 
     public static void menuEnd() {
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
         choicePrompt();
     }
 
-    /** Re-print the menu choice line after a bad or empty choice (same style as {@link #menuEnd}). */
+    //Re-print the menu choice line after a bad or empty choice (same style as {@link #menuEnd}). 
     public static void choicePrompt() {
         System.out.print(leftPad() + "  Choice: ");
     }
 
-    /** Same as menuEnd but without prompt (e.g. before nested questions). */
-    public static void menuEndNoPrompt() {
-        System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
-    }
-
-    /** Section title for list pages (books, journals, …). */
+    //Section title for list pages (books, journals, …). 
     public static void sectionTitle(String title) {
         blank();
         String base = leftPad() + "  ";
@@ -155,7 +142,7 @@ public final class ConsoleUi {
         System.out.println(leftPad() + "  - " + line);
     }
 
-    /** Numbered row (menus, time slots) without a bullet. */
+    // Numbered row (menus, time slots) without a bullet. 
     public static void numberedLine(int n, String line) {
         System.out.println(leftPad() + String.format("%2d.  %s", n, line));
     }
@@ -164,7 +151,7 @@ public final class ConsoleUi {
         System.out.println(leftPad() + "    " + line);
     }
 
-    /** Single-line form field label (keep on same line as user input). */
+    //Single-line form field label (keep on same line as user input). 
     public static void fieldPrompt(String label) {
         String prompt = label + ": ";
         System.out.print(leftPad() + "  " + prompt);
@@ -182,13 +169,13 @@ public final class ConsoleUi {
         System.out.println(leftPad() + "  " + msg);
     }
 
-    /** Pause between screens. */
+    //pause between screens. 
     public static void pressEnterHint() {
         String prompt = "Press Enter to continue...";
         System.out.println(leftPad() + "  " + prompt);
     }
 
-    /** Framed block title for database report blocks. */
+    //Framed block title for database report blocks.
     public static void reportHeader(String title) {
         blank();
         System.out.println(leftPad() + "\u250C" + hbar() + "\u2510");
@@ -196,7 +183,7 @@ public final class ConsoleUi {
         System.out.println(leftPad() + "\u2514" + hbar() + "\u2518");
     }
 
-    /** Reader / sub-screen divider. */
+    //Reader / sub-screen divider. 
     public static void readerPageBar(String title, int page, int total) {
         System.out.println();
         System.out.println(leftPad() + repeat('\u2500', 48));
@@ -209,7 +196,7 @@ public final class ConsoleUi {
         System.out.print(leftPad() + "  " + prompt);
     }
 
-    /** Formats a date for display (dd/mm/yyyy). */
+    // Formats a date for display (dd/mm/yyyy). 
     public static String formatDate(LocalDate date) {
         if (date == null) {
             return "";
