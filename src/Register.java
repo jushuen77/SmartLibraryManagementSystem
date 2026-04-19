@@ -49,7 +49,7 @@ public final class Register {
 
         if (!Database.isValidEmail(email)) {
             ConsoleUi.warn("That email does not look valid. Use the form name@provider (for example you@school.edu).");
-            System.out.printf("\t\t\tEmail format is <name> + @ + your email provider!! FAH");
+            System.out.printf("\t\t\tEmail format is <name> + @ + your email provider! ");
             System.out.println();
             ConsoleUi.pauseThenClear(scn);
             return;

@@ -139,7 +139,7 @@ public class Database {
                 );
                 """;
 
-        try (Connection conn = getConnection();//this is to get connection for the database then prompt error msg if unsuccesuful
+        try (Connection conn = getConnection();//this is to get connection for the database then prompt error msg if unsuccessful
                 Statement stmt = conn.createStatement()) {
             stmt.execute(usersTable);
             stmt.execute(patronsTable);
@@ -378,7 +378,7 @@ public class Database {
         }
     }
 
-   //create new user get name email and password and what not 67
+   //create new user get name email and password and what not
     public static boolean addUser(String name, String email, String password) {
         String sql = "INSERT INTO users(name, email, password) VALUES(?, ?, ?)";
 
