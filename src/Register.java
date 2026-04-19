@@ -15,8 +15,7 @@ public final class Register {
     }
 
     private static void pressEnterToContinue(Scanner scn) {
-        ConsoleUi.pressEnterHint();
-        scn.nextLine();
+        ConsoleUi.pauseThenClear(scn);
     }
 
     public static void prompt(Scanner scn) {
@@ -48,20 +47,20 @@ public final class Register {
         }
 
         if (!password.equals(conPassword)) {
-            ConsoleUi.warn("Passwords do not match.");
+            ConsoleUi.warn("The password and confirmation do not match. Re-enter them so both fields are identical.");
             pressEnterToContinue(scn);
             return;
         }
 
         if (!Database.isValidEmail(email)) {
-            ConsoleUi.warn("Invalid email format.");
+            ConsoleUi.warn("That email does not look valid. Use the form name@provider (for example you@school.edu).");
             System.out.printf("\t\t\tEmail format is <name> + @ + your email provider!! FAH");
             System.out.println();
             pressEnterToContinue(scn);
             return;
         }
         if (Database.userExists(name, email)) {
-            ConsoleUi.warn("That name or email is already registered.");
+            ConsoleUi.warn("An account already uses that name or email. Sign in instead, or use a different email.");
             pressEnterToContinue(scn);
             return;
         }

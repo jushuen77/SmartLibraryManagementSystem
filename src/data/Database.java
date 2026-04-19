@@ -166,7 +166,6 @@ public class Database {
             stmt.execute(studyBookingsTable);
             stmt.execute(activeLoanIndex);
             stmt.execute(activeReservationIndex);
-            ConsoleUi.muted("Database ready: users, patrons, items, loans, reservations, fines, study rooms.");
             seedSampleDataIfEmpty();
             syncPatronsFromUsersIfMissing();
             seedStudyRoomsIfEmpty();
@@ -1127,7 +1126,7 @@ public class Database {
                     try (ResultSet rs = typeStmt.executeQuery()) {
                         if (!rs.next()) {
                             conn.rollback();
-                            ConsoleUi.warn("Member record not found.");
+                            ConsoleUi.warn("No library member record matches that account in the database.");
                             return false;
                         }
                         try {
@@ -1161,7 +1160,7 @@ public class Database {
                     try (ResultSet rs = policyStmt.executeQuery()) {
                         if (!rs.next()) {
                             conn.rollback();
-                            ConsoleUi.warn("Book not found.");
+                            ConsoleUi.warn("That book id is not in the catalog (or it is not stored as a BOOK item).");
                             return false;
                         }
                         int bookLoanDays = rs.getInt("loan_duration_days");
@@ -1178,7 +1177,7 @@ public class Database {
                         int totalBorrowedTimes = rs.next() ? rs.getInt(1) : 0;
                         if (totalBorrowedTimes >= borrowingLimit) {
                             conn.rollback();
-                            ConsoleUi.warn("Borrowing limit reached for this book.");
+                            ConsoleUi.warn("You have borrowed this title as many times as its policy allows. Return a copy or ask staff.");
                             return false;
                         }
                     }
@@ -1190,7 +1189,7 @@ public class Database {
                     lockItem.setInt(1, itemId);
                     if (lockItem.executeUpdate() != 1) {
                         conn.rollback();
-                        ConsoleUi.warn("Item not available (wrong id, on loan, or lost).");
+                        ConsoleUi.warn("That copy cannot be borrowed: it may be on loan, marked lost, or the id may be wrong.");
                         return false;
                     }
                 }
@@ -1210,7 +1209,7 @@ public class Database {
             } catch (SQLException e) {
                 conn.rollback();
                 if (e.getMessage() != null && e.getMessage().contains("FOREIGN KEY")) {
-                    ConsoleUi.warn("Invalid patron or item id.");
+                    ConsoleUi.warn("The borrow could not be saved (account or book link failed). Try again or contact staff.");
                 } else {
                     e.printStackTrace();
                 }
@@ -1225,7 +1224,7 @@ public class Database {
     /** Borrows a book using patron email and book ISBN. */
     public static boolean borrowBookByPatronEmailAndIsbn(String patronEmail, String isbn) {
         if (patronEmail == null || patronEmail.isBlank() || isbn == null || isbn.isBlank()) {
-            ConsoleUi.warn("Patron email and ISBN are required.");
+            ConsoleUi.warn("Both patron email and book ISBN are required to borrow.");
             return false;
         }
 
@@ -1255,11 +1254,11 @@ public class Database {
             }
 
             if (patronId == null) {
-                ConsoleUi.warn("No patron record for your account. Register again or contact staff.");
+                ConsoleUi.warn("Your sign-in email is not on file as a library member. Register first or ask staff to link your account.");
                 return false;
             }
             if (itemId == null) {
-                ConsoleUi.warn("No book found with that ISBN.");
+                ConsoleUi.warn("No book in the catalog has that ISBN. Check the digits or search by title.");
                 return false;
             }
             return borrowItem(patronId, itemId);
@@ -1272,7 +1271,7 @@ public class Database {
     /** Borrows a book using patron email and exact book title. */
     public static boolean borrowBookByPatronEmailAndTitle(String patronEmail, String title) {
         if (patronEmail == null || patronEmail.isBlank() || title == null || title.isBlank()) {
-            ConsoleUi.warn("Patron email and title are required.");
+            ConsoleUi.warn("Both patron email and book title are required to borrow by title.");
             return false;
         }
 
@@ -1302,11 +1301,11 @@ public class Database {
             }
 
             if (patronId == null) {
-                ConsoleUi.warn("No patron record for your account. Register again or contact staff.");
+                ConsoleUi.warn("Your sign-in email is not on file as a library member. Register first or ask staff to link your account.");
                 return false;
             }
             if (itemId == null) {
-                ConsoleUi.warn("No book found with that exact title.");
+                ConsoleUi.warn("No book in the catalog has that exact title. Check spelling or use ISBN.");
                 return false;
             }
             return borrowItem(patronId, itemId);
@@ -1479,7 +1478,7 @@ public class Database {
     /** Patron returns a book they borrowed, matched by ISBN. */
     public static boolean returnBookByPatronEmailAndIsbn(String patronEmail, String isbn) {
         if (patronEmail == null || patronEmail.isBlank() || isbn == null || isbn.isBlank()) {
-            ConsoleUi.warn("Patron email and ISBN are required.");
+            ConsoleUi.warn("Both patron email and book ISBN are required to borrow.");
             return false;
         }
         String sql = """
@@ -1651,7 +1650,7 @@ public class Database {
                 check.setInt(1, reservation.getItemId());
                 try (ResultSet rs = check.executeQuery()) {
                     if (!rs.next()) {
-                        ConsoleUi.warn("Book not found.");
+                        ConsoleUi.warn("That book id is not in the catalog, so a reservation cannot be created.");
                         return false;
                     }
                     if (!"ON_LOAN".equals(rs.getString("status"))) {

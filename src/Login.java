@@ -13,8 +13,7 @@ public final class Login {
     }
 
     private static void pressEnterToContinue(Scanner scn) {
-        ConsoleUi.pressEnterHint();
-        scn.nextLine();
+        ConsoleUi.pauseThenClear(scn);
     }
 
     public static boolean prompt(Scanner scn) {
@@ -37,10 +36,9 @@ public final class Login {
         String[] profile = Database.findUserNameEmailIfValidCredentials(identifier, password);
         if (profile != null) {
             UserSession.set(profile[0], profile[1], Database.getPatronTypeForEmail(profile[1]));
-            ConsoleUi.ok("Welcome, " + UserSession.getMemberType().toDisplayString() + ".");
             return true;
         }
-        ConsoleUi.warn("Wrong email/username or password.");
+        ConsoleUi.warn("Sign-in failed: check your email or username and password, then try again.");
         pressEnterToContinue(scn);
         return false;
     }

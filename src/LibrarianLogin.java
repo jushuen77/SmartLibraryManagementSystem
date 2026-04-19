@@ -31,10 +31,9 @@ public final class LibrarianLogin {
         }
 
         if (STAFF_USERNAME.equals(username) && STAFF_PASSWORD.equals(password)) {
-            ConsoleUi.ok("Staff login successful.");
             return true;
         }
-        ConsoleUi.warn("Invalid staff credentials.");
+        ConsoleUi.warn("Staff login failed: that username or password does not match our records.");
         return false;
     }
 }

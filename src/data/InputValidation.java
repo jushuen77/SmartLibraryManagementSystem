@@ -35,27 +35,27 @@ public final class InputValidation {
     public static String validateIsbn(String raw) {
         String s = normalizeIsbn(raw);
         if (s.isEmpty()) {
-            return "ISBN cannot be empty.";
+            return "You did not enter an ISBN. Type the 10- or 13-character code from the book (spaces and hyphens are fine).";
         }
         if (s.length() == 13) {
             if (!allDigits(s)) {
-                return "ISBN-13 must contain only digits (after removing spaces and hyphens).";
+                return "ISBN-13 should be 13 digits only after removing spaces and hyphens. Letters are not allowed here.";
             }
             if (!isbn13ChecksumOk(s)) {
-                return "ISBN-13 check digit is invalid.";
+                return "This ISBN-13 fails the checksum (the last digit does not match the rest). Check for a typo.";
             }
             return null;
         }
         if (s.length() == 10) {
             if (!isbn10BodyOk(s)) {
-                return "ISBN-10 must be 9 digits followed by a digit or X.";
+                return "ISBN-10 must be nine digits plus a final digit or X (for example 0471958697).";
             }
             if (!isbn10ChecksumOk(s)) {
-                return "ISBN-10 check character is invalid.";
+                return "This ISBN-10 fails the checksum. Check the digits and the last character (digit or X).";
             }
             return null;
         }
-        return "ISBN must be 10 characters (ISBN-10) or 13 digits (ISBN-13).";
+        return "After removing spaces and hyphens, the code must be exactly 10 characters (ISBN-10) or 13 digits (ISBN-13).";
     }
 
     private static boolean allDigits(String s) {

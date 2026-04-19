@@ -5,6 +5,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Scanner;
 
 /**
  * Terminal layout helpers: centered menus, consistent spacing, and readable status lines.
@@ -74,6 +75,35 @@ public final class ConsoleUi {
 
     public static void blank() {
         System.out.println();
+    }
+
+    /**
+     * Clears the terminal so the next screen starts without leftover output.
+     * Uses {@code cls} on Windows; ANSI erase on other OSes; falls back to blank lines if those fail.
+     */
+    public static void clearScreen() {
+        try {
+            String os = System.getProperty("os.name", "").toLowerCase();
+            if (os.contains("windows")) {
+                new ProcessBuilder("cmd", "/c", "cls").inheritIO().start().waitFor();
+            } else {
+                System.out.print("\u001b[2J\u001b[H");
+                System.out.flush();
+            }
+        } catch (Exception e) {
+            for (int i = 0; i < 48; i++) {
+                System.out.println();
+            }
+        }
+    }
+
+    /** Waits for Enter, then clears the terminal (use after errors or full-screen messages). */
+    public static void pauseThenClear(Scanner scn) {
+        pressEnterHint();
+        if (scn != null) {
+            scn.nextLine();
+        }
+        clearScreen();
     }
 
     /** Small welcome strip at startup. */
@@ -176,7 +206,7 @@ public final class ConsoleUi {
     }
 
     public static void readerControlsHint() {
-        String prompt = "[n]ext  [p]rev  [q]uit or 0: ";
+        String prompt = "[n]ext  [p]rev  [q]uit: ";
         System.out.print(leftPad() + "  " + prompt);
     }
 

@@ -48,8 +48,7 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void pressEnterToContinue(Scanner scn) {
-        ConsoleUi.pressEnterHint();
-        scn.nextLine();
+        ConsoleUi.pauseThenClear(scn);
     }
 
     /** Asks until the user enters a valid ISBN-10 or ISBN-13 (check digit verified). */
@@ -82,6 +81,7 @@ public class App {
     }
 
     private static void runLibrarianAddBook(Scanner scn) {
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("New book acquisition");
         ConsoleUi.muted("Tip: 0 alone cancels at Title / Author / Genre / loan fields. ISBN: 0 or cancel. Daily fine: type cancel to abort (0.00 is a valid fine).");
         String title;
@@ -95,7 +95,7 @@ public class App {
             if (!title.isEmpty()) {
                 break;
             }
-            ConsoleUi.warn("Title cannot be empty.");
+            ConsoleUi.warn("The title cannot be blank. Enter the book title, or 0 to cancel.");
         }
         ConsoleUi.fieldPrompt("Author (0 = cancel)");
         String author = scn.nextLine().trim();
@@ -123,7 +123,7 @@ public class App {
             if (!genre.isEmpty()) {
                 break;
             }
-            ConsoleUi.warn("Genre cannot be empty.");
+            ConsoleUi.warn("The genre cannot be blank. Enter a genre label, or 0 to cancel.");
         }
         ConsoleUi.fieldPrompt("Loan duration (days, 1-365, 0 = cancel)");
         Integer loanDaysBoxed = InputReaders.readIntInRangeOrZeroCancel(scn, 1, 365, "Loan duration (days, 1-365, 0 = cancel)");
@@ -169,17 +169,20 @@ public class App {
 
         Scanner scn = new Scanner(System.in);
         boolean running = true;
+        int mainMenuVisits = 0;
 
         while (running) {
+            if (mainMenuVisits++ > 0) {
+                ConsoleUi.clearScreen();
+            }
             ConsoleUi.menuStart("Main menu");
             ConsoleUi.menuOption(1, "Library member login");
             ConsoleUi.menuOption(2, "Register");
             ConsoleUi.menuOption(3, "Librarian staff login");
             ConsoleUi.menuOption(4, "Exit");
-            ConsoleUi.menuOption(0, "Exit (same as 4)");
             ConsoleUi.menuEnd();
 
-            int choice = InputReaders.readMenuInt(scn, 0, 4);
+            int choice = InputReaders.readMenuInt(scn, 1, 4);
 
             switch (choice) {
                 case 1:
@@ -203,7 +206,6 @@ public class App {
                         pressEnterToContinue(scn);
                     }
                     break;
-                case 0:
                 case 4:
                     running = false;
                     UserSession.clear();
@@ -223,8 +225,17 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void runLibraryPortal(Scanner scn) {
+        boolean showSignedInBanner = true;
         boolean inLibraryMenu = true;
         while (inLibraryMenu && UserSession.isLoggedIn()) {
+            ConsoleUi.clearScreen();
+            if (showSignedInBanner) {
+                ConsoleUi.ok("Signed in as " + UserSession.getDisplayName()
+                        + " (" + UserSession.getMemberType().toDisplayString() + ") <"
+                        + UserSession.getEmail() + ">.");
+                ConsoleUi.blank();
+                showSignedInBanner = false;
+            }
             ConsoleUi.menuStart("Library portal");
             ConsoleUi.menuOption(1, "View books");
             ConsoleUi.menuOption(2, "View journals");
@@ -235,11 +246,9 @@ public class App {
             ConsoleUi.menuOption(7, "Study room booking");
             ConsoleUi.menuOption(8, "Log out");
             ConsoleUi.menuOption(9, "Back to main menu");
-            ConsoleUi.menuOption(0, "Back to main menu (same as 9)");
             ConsoleUi.menuEnd();
-            int libraryChoice = InputReaders.readMenuInt(scn, 0, 9);
+            int libraryChoice = InputReaders.readMenuInt(scn, 1, 9);
             switch (libraryChoice) {
-                case 0:
                 case 9:
                     inLibraryMenu = false;
                     break;
@@ -281,14 +290,15 @@ public class App {
 
     private static void showUserProfilePage(Scanner scn) {
         if (!UserSession.isLoggedIn()) {
-            ConsoleUi.warn("Sign in from the main menu first.");
+            ConsoleUi.warn("Sign in as a library member from the main menu (option 1) before opening your profile.");
             pressEnterToContinue(scn);
             return;
         }
         Patron profile = Database.getPatronByEmail(UserSession.getEmail());
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("My profile");
         if (profile == null) {
-            ConsoleUi.warn("No library member record is linked to your account. Contact staff or register again.");
+            ConsoleUi.warn("No library member profile is linked to this sign-in. Ask staff to link your account, or register again.");
             pressEnterToContinue(scn);
             return;
         }
@@ -314,6 +324,7 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void showBooksPage(Scanner scn) {
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("Books");
         for (Book b : Book.fetchAllFromDatabase()) {
             ConsoleUi.listItem(b.getTitle() + " by " + b.getAuthor());
@@ -326,6 +337,7 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void showJournalsPage(Scanner scn) {
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("Journals");
         for (Journal j : Journal.fetchAllFromDatabase()) {
             ConsoleUi.listItem(j.getTitle() + " by " + j.getAuthor());
@@ -338,6 +350,7 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void showDigitalResourcesPage(Scanner scn) {
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("Digital resources");
         for (DigitalResource d : DigitalResource.fetchAllFromDatabase()) {
             ConsoleUi.listItem(d.getTitle() + " by " + d.getAuthor());
@@ -351,24 +364,24 @@ public class App {
 
     private static void showCatalogSystemPage(Scanner scn) {
         if (!UserSession.isLoggedIn()) {
-            ConsoleUi.warn("Sign in from the main menu first.");
+            ConsoleUi.warn("Sign in as a library member from the main menu (option 1) before using the catalog.");
             pressEnterToContinue(scn);
             return;
         }
         final String patronEmail = UserSession.getEmail();
         boolean inCatalogMenu = true;
         while (inCatalogMenu) {
+            ConsoleUi.clearScreen();
             ConsoleUi.menuStart("Catalog");
-            ConsoleUi.menuOption(0, "Back to library portal");
             ConsoleUi.menuOption(1, "Browse by genre");
             ConsoleUi.menuOption(2, "Browse by author");
             ConsoleUi.menuOption(3, "Search book availability");
             ConsoleUi.menuOption(4, "Borrow a book");
             ConsoleUi.menuOption(5, "Return a book");
-            ConsoleUi.menuOption(6, "Back (same as 0)");
+            ConsoleUi.menuOption(6, "Back to library portal");
             ConsoleUi.menuEnd();
 
-            int choice = InputReaders.readMenuInt(scn, 0, 6);
+            int choice = InputReaders.readMenuInt(scn, 1, 6);
             switch (choice) {
                     case 1:
                         ConsoleUi.sectionTitle("By genre");
@@ -436,7 +449,7 @@ public class App {
                                             LibraryItem selected = CatalogSystem.findByIsbn(reserveIsbn);
 
                                             if (selected == null || !"BOOK".equals(selected.getSqlItemType())) {
-                                                ConsoleUi.warn("No book with that ISBN.");
+                                                ConsoleUi.warn("No book in the catalog matches that ISBN.");
                                             } else if (!"ON_LOAN".equals(selected.getStatus().name())) {
                                                 ConsoleUi.info("That book is not on loan; no reservation needed.");
                                             } else {
@@ -446,7 +459,7 @@ public class App {
                                                 }
                                                 String requesterEmail = UserSession.getEmail();
                                                 if (!Database.isValidEmail(requesterEmail)) {
-                                                    ConsoleUi.warn("Your account email is invalid for a reservation.");
+                                                    ConsoleUi.warn("Your profile email is not valid for reservations. Update your account or contact staff.");
                                                 } else {
                                                     Database.addBookReservation(
                                                             new BookReservation(selected.getId(), requesterName, requesterEmail));
@@ -463,14 +476,14 @@ public class App {
                         ConsoleUi.info("Signed in as: " + UserSession.getDisplayName()
                                 + " (" + UserSession.getMemberType().toDisplayString() + ") <" + patronEmail + ">");
                         ConsoleUi.menuStart("Borrow by");
-                        ConsoleUi.menuOption(0, "Back to catalog (cancel borrow)");
                         ConsoleUi.menuOption(1, "Pick from available books");
                         ConsoleUi.menuOption(2, "Search by title keywords");
                         ConsoleUi.menuOption(3, "Enter ISBN");
+                        ConsoleUi.menuOption(4, "Back to catalog");
                         ConsoleUi.menuEnd();
-                        int borrowMethod = InputReaders.readMenuInt(scn, 0, 3);
+                        int borrowMethod = InputReaders.readMenuInt(scn, 1, 4);
                         switch (borrowMethod) {
-                            case 0:
+                            case 4:
                                 break;
                             case 1:
                                 List<Book> availableBooks = Database.getAvailableBooks();
@@ -532,7 +545,7 @@ public class App {
                                 Database.borrowBookByPatronEmailAndIsbn(patronEmail, borrowIsbn);
                                 break;
                             default:
-                                ConsoleUi.warn("Invalid borrow method.");
+                                ConsoleUi.warn("That option is not valid here. Choose 1–4 from the borrow menu.");
                         }
                         pressEnterToContinue(scn);
                         break;
@@ -546,13 +559,13 @@ public class App {
                             break;
                         }
                         ConsoleUi.menuStart("Return a book");
-                        ConsoleUi.menuOption(0, "Back to catalog (cancel return)");
                         ConsoleUi.menuOption(1, "Choose from my borrowed books");
                         ConsoleUi.menuOption(2, "Enter ISBN");
+                        ConsoleUi.menuOption(3, "Back to catalog");
                         ConsoleUi.menuEnd();
-                        int retMethod = InputReaders.readMenuInt(scn, 0, 2);
+                        int retMethod = InputReaders.readMenuInt(scn, 1, 3);
                         switch (retMethod) {
-                            case 0:
+                            case 3:
                                 break;
                             case 1:
                                 ConsoleUi.sectionTitle("Books you have borrowed");
@@ -579,11 +592,10 @@ public class App {
                                 Database.returnBookByPatronEmailAndIsbn(patronEmail, returnIsbn);
                                 break;
                             default:
-                                ConsoleUi.warn("Invalid choice.");
+                                ConsoleUi.warn("That option is not valid here. Choose 1–3 from the return menu.");
                         }
                         pressEnterToContinue(scn);
                         break;
-                    case 0:
                     case 6:
                         inCatalogMenu = false;
                         break;
@@ -600,10 +612,11 @@ public class App {
     private static void showEbookReaderPage(Scanner scn) {
         List<DigitalResource> list = DigitalResource.fetchAllFromDatabase();
         if (list.isEmpty()) {
-            ConsoleUi.warn("No digital titles in the catalog.");
+            ConsoleUi.warn("There are no digital titles in the catalog yet.");
             pressEnterToContinue(scn);
             return;
         }
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("E-book reader");
         for (int i = 0; i < list.size(); i++) {
             DigitalResource d = list.get(i);
@@ -611,9 +624,13 @@ public class App {
             ConsoleUi.numberedLine(i + 1, d.getTitle() + " | ISBN: " + d.getIsbn()
                     + (hasText ? "" : "  (no reader text yet)"));
         }
-        ConsoleUi.fieldPrompt("Open title # (0 = back)");
-        int pick = InputReaders.readIntInRange(scn, 0, list.size(), "Open title # (0 = back)");
-        if (pick == 0) {
+        int backChoice = list.size() + 1;
+        ConsoleUi.numberedLine(backChoice, "Back to library portal");
+        ConsoleUi.fieldPrompt("Open title # (1-" + list.size() + ") or " + backChoice + " to go back");
+        int pick = InputReaders.readIntInRange(scn, 1, backChoice,
+                "Open title # (1-" + list.size() + ") or " + backChoice + " to go back");
+        if (pick == backChoice) {
+            ConsoleUi.clearScreen();
             return;
         }
         try {
@@ -637,8 +654,9 @@ public class App {
                 }
                 ConsoleUi.readerControlsHint();
                 String cmd = scn.nextLine().trim().toLowerCase();
-                if (cmd.equals("q") || "0".equals(cmd)) {
+                if (cmd.equals("q")) {
                     reading = false;
+                    ConsoleUi.clearScreen();
                 } else if (cmd.equals("n") && page < totalPages - 1) {
                     page++;
                 } else if (cmd.equals("p") && page > 0) {
@@ -646,8 +664,8 @@ public class App {
                 }
             }
         } catch (Exception e) {
-            ConsoleUi.warn("Could not open that title.");
-            scn.nextLine();
+            ConsoleUi.warn("Something went wrong opening that title. Try another book or contact staff if it keeps happening.");
+            pressEnterToContinue(scn);
         }
     }
 
@@ -658,24 +676,24 @@ public class App {
     private static void showStudyRoomBookingPage(Scanner scn) {
         boolean sub = true;
         while (sub) {
+            ConsoleUi.clearScreen();
             ConsoleUi.menuStart("Study room booking");
-            ConsoleUi.menuOption(0, "Back to library portal");
             ConsoleUi.menuOption(1, "List rooms & book a slot");
             ConsoleUi.menuOption(2, "My bookings");
             ConsoleUi.menuOption(3, "Cancel a booking");
-            ConsoleUi.menuOption(4, "Back (same as 0)");
+            ConsoleUi.menuOption(4, "Back to library portal");
             ConsoleUi.menuEnd();
-            int c = InputReaders.readMenuInt(scn, 0, 4);
+            int c = InputReaders.readMenuInt(scn, 1, 4);
             switch (c) {
                     case 1:
                         if (!UserSession.isLoggedIn()) {
-                            ConsoleUi.warn("Sign in from the main menu first.");
+                            ConsoleUi.warn("Sign in as a library member from the main menu (option 1) before booking a study room.");
                             pressEnterToContinue(scn);
                             break;
                         }
                         List<StudyRoomRow> rooms = Database.getStudyRoomsList();
                         if (rooms.isEmpty()) {
-                            ConsoleUi.warn("No study rooms are set up yet.");
+                            ConsoleUi.warn("No study rooms are configured in the system yet. Ask staff to add rooms.");
                             pressEnterToContinue(scn);
                             break;
                         }
@@ -702,7 +720,7 @@ public class App {
                         }
                         LocalDate bookingDay = Database.parseFlexibleDate(dateLine);
                         if (bookingDay == null) {
-                            ConsoleUi.warn("Use dd/mm/yyyy, for example 17/04/2026.");
+                            ConsoleUi.warn("That date was not understood. Use day/month/year with slashes, for example 17/04/2026.");
                             pressEnterToContinue(scn);
                             break;
                         }
@@ -722,7 +740,7 @@ public class App {
                         break;
                     case 2:
                         if (!UserSession.isLoggedIn()) {
-                            ConsoleUi.warn("Sign in from the main menu first.");
+                            ConsoleUi.warn("Sign in as a library member from the main menu (option 1) to view your bookings.");
                             pressEnterToContinue(scn);
                             break;
                         }
@@ -731,7 +749,7 @@ public class App {
                         break;
                     case 3:
                         if (!UserSession.isLoggedIn()) {
-                            ConsoleUi.warn("Sign in from the main menu first.");
+                            ConsoleUi.warn("Sign in as a library member from the main menu (option 1) to cancel a booking.");
                             pressEnterToContinue(scn);
                             break;
                         }
@@ -756,12 +774,11 @@ public class App {
                         Database.cancelStudyBooking(bookings.get(cancelPick - 1).id, UserSession.getEmail());
                         pressEnterToContinue(scn);
                         break;
-                    case 0:
                     case 4:
                         sub = false;
                         break;
                     default:
-                        ConsoleUi.warn("Invalid choice.");
+                        ConsoleUi.warn("That number is not on the menu. Choose 1–4.");
                         pressEnterToContinue(scn);
                 }
         }
@@ -772,10 +789,16 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void showLibrarianPortal(Scanner scn) {
+        boolean showStaffBanner = true;
         boolean inStaffMenu = true;
         while (inStaffMenu) {
+            ConsoleUi.clearScreen();
+            if (showStaffBanner) {
+                ConsoleUi.ok("Librarian portal (staff mode).");
+                ConsoleUi.blank();
+                showStaffBanner = false;
+            }
             ConsoleUi.menuStart("Librarian portal");
-            ConsoleUi.menuOption(0, "Back to main menu");
             ConsoleUi.menuOption(1, "Add new acquisition (book)");
             ConsoleUi.menuOption(2, "Mark book lost / damaged (ISBN)");
             ConsoleUi.menuOption(3, "Audit inventory");
@@ -783,9 +806,9 @@ public class App {
             ConsoleUi.menuOption(5, "View outstanding fines");
             ConsoleUi.menuOption(6, "Record fine payment");
             ConsoleUi.menuOption(7, "View registered patrons");
-            ConsoleUi.menuOption(8, "Back (same as 0)");
+            ConsoleUi.menuOption(8, "Back to main menu");
             ConsoleUi.menuEnd();
-            int choice = InputReaders.readMenuInt(scn, 0, 8);
+            int choice = InputReaders.readMenuInt(scn, 1, 8);
             switch (choice) {
                     case 1:
                         runLibrarianAddBook(scn);
@@ -836,7 +859,6 @@ public class App {
                     case 7:
                         showPatronsPage(scn);
                         break;
-                    case 0:
                     case 8:
                         inStaffMenu = false;
                         break;
@@ -851,6 +873,7 @@ public class App {
     // -------------------------------------------------------------------------
 
     private static void showPatronsPage(Scanner scn) {
+        ConsoleUi.clearScreen();
         ConsoleUi.sectionTitle("Registered patrons");
         for (Patron p : Patron.fetchAllFromDatabase()) {
             ConsoleUi.listItem(p.getName() + " (" + p.getPatronType().toDisplayString() + ")");
