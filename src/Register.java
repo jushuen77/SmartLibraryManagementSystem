@@ -3,6 +3,7 @@ import java.util.Scanner;
 
 import data.ConsoleUi;
 import data.Database;
+import data.InputReaders;
 import library.model.PatronType;
 
 /*
@@ -20,14 +21,31 @@ public final class Register {
 
     public static void prompt(Scanner scn) {
         ConsoleUi.sectionTitle("Register (library member)");
-        ConsoleUi.fieldPrompt("Name");
+        ConsoleUi.muted("Enter 0 as name to cancel registration before creating an account.");
+        ConsoleUi.fieldPrompt("Name (0 = cancel)");
         String name = scn.nextLine();
-        ConsoleUi.fieldPrompt("Email");
+        if ("0".equals(name.trim())) {
+            ConsoleUi.info("Registration cancelled.");
+            return;
+        }
+        ConsoleUi.fieldPrompt("Email (0 = cancel)");
         String email = scn.nextLine();
-        ConsoleUi.fieldPrompt("Password");
+        if ("0".equals(email.trim())) {
+            ConsoleUi.info("Registration cancelled.");
+            return;
+        }
+        ConsoleUi.fieldPrompt("Password (0 = cancel)");
         String password = scn.nextLine();
-        ConsoleUi.fieldPrompt("Confirm password");
+        if ("0".equals(password.trim())) {
+            ConsoleUi.info("Registration cancelled.");
+            return;
+        }
+        ConsoleUi.fieldPrompt("Confirm password (0 = cancel)");
         String conPassword = scn.nextLine();
+        if ("0".equals(conPassword.trim())) {
+            ConsoleUi.info("Registration cancelled.");
+            return;
+        }
 
         if (!password.equals(conPassword)) {
             ConsoleUi.warn("Passwords do not match.");
@@ -50,22 +68,21 @@ public final class Register {
 
         PatronType memberType = PatronType.PUBLIC;
         ConsoleUi.menuStart("Member type");
+        ConsoleUi.menuOption(0, "Cancel — do not create account");
         ConsoleUi.menuOption(1, "Student");
         ConsoleUi.menuOption(2, "Faculty");
         ConsoleUi.menuOption(3, "Public member");
         ConsoleUi.menuEnd();
-        try {
-            int mt = scn.nextInt();
-            scn.nextLine();
-            memberType = switch (mt) {
-                case 1 -> PatronType.STUDENT;
-                case 2 -> PatronType.FACULTY;
-                default -> PatronType.PUBLIC;
-            };
-        } catch (Exception e) {
-            scn.nextLine();
-            ConsoleUi.warn("Invalid choice; using public member.");
+        int mt = InputReaders.readMenuInt(scn, 0, 3);
+        if (mt == 0) {
+            ConsoleUi.info("Registration cancelled. No account was created.");
+            return;
         }
+        memberType = switch (mt) {
+            case 1 -> PatronType.STUDENT;
+            case 2 -> PatronType.FACULTY;
+            default -> PatronType.PUBLIC;
+        };
 
         if (Database.addUser(name, email, password)) {
             Database.ensurePatronForNewUser(name, email, memberType);

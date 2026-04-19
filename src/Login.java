@@ -20,10 +20,19 @@ public final class Login {
     public static boolean prompt(Scanner scn) {
         ConsoleUi.sectionTitle("Library member login");
         ConsoleUi.info("Students, faculty, and public members use this sign-in.");
+        ConsoleUi.muted("Enter 0 as email/username to cancel login.");
         ConsoleUi.fieldPrompt("Email or username");
         String identifier = scn.nextLine();
-        ConsoleUi.fieldPrompt("Password");
+        if ("0".equals(identifier.trim())) {
+            ConsoleUi.info("Login cancelled.");
+            return false;
+        }
+        ConsoleUi.fieldPrompt("Password (0 = cancel)");
         String password = scn.nextLine();
+        if ("0".equals(password.trim())) {
+            ConsoleUi.info("Login cancelled.");
+            return false;
+        }
 
         String[] profile = Database.findUserNameEmailIfValidCredentials(identifier, password);
         if (profile != null) {

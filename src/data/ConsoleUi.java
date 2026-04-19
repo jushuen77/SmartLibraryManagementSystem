@@ -101,8 +101,12 @@ public final class ConsoleUi {
     /** Bottom border + choice prompt (call after all menuOption lines). */
     public static void menuEnd() {
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
-        String prompt = "Choice: ";
-        System.out.print(leftPad() + "  " + prompt);
+        choicePrompt();
+    }
+
+    /** Re-print the menu choice line after a bad or empty choice (same style as {@link #menuEnd}). */
+    public static void choicePrompt() {
+        System.out.print(leftPad() + "  Choice: ");
     }
 
     /** Same as menuEnd but without prompt (e.g. before nested questions). */
@@ -172,7 +176,7 @@ public final class ConsoleUi {
     }
 
     public static void readerControlsHint() {
-        String prompt = "[n]ext  [p]rev  [q]uit: ";
+        String prompt = "[n]ext  [p]rev  [q]uit or 0: ";
         System.out.print(leftPad() + "  " + prompt);
     }
 

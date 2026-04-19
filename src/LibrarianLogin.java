@@ -16,10 +16,19 @@ public final class LibrarianLogin {
 
     public static boolean prompt(Scanner scn) {
         ConsoleUi.sectionTitle("Staff login");
+        ConsoleUi.muted("Enter 0 as username to cancel.");
         ConsoleUi.fieldPrompt("Username");
         String username = scn.nextLine();
-        ConsoleUi.fieldPrompt("Password");
+        if ("0".equals(username.trim())) {
+            ConsoleUi.info("Staff login cancelled.");
+            return false;
+        }
+        ConsoleUi.fieldPrompt("Password (0 = cancel)");
         String password = scn.nextLine();
+        if ("0".equals(password.trim())) {
+            ConsoleUi.info("Staff login cancelled.");
+            return false;
+        }
 
         if (STAFF_USERNAME.equals(username) && STAFF_PASSWORD.equals(password)) {
             ConsoleUi.ok("Staff login successful.");

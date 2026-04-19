@@ -707,13 +707,19 @@ public class Database {
             System.out.println("ISBN is required.");
             return false;
         }
-        String findSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
+        String key = InputValidation.normalizeIsbn(isbn);
+        String findSql = """
+                SELECT id FROM items
+                WHERE item_type = 'BOOK'
+                  AND replace(replace(upper(isbn), '-', ''), ' ', '') = ?
+                LIMIT 1
+                """;
         try (Connection conn = getConnection()) {
             conn.setAutoCommit(false);
             try {
                 Integer itemId = null;
                 try (PreparedStatement find = conn.prepareStatement(findSql)) {
-                    find.setString(1, isbn.trim());
+                    find.setString(1, key);
                     try (ResultSet rs = find.executeQuery()) {
                         if (rs.next()) {
                             itemId = rs.getInt("id");
