@@ -1,7 +1,8 @@
 package library.model;
 
-import data.Database;
 import java.util.List;
+
+import data.Database;
 
 /** Physical or standard circulating book ({@code item_type = BOOK}). */
 public class Book extends LibraryItem {

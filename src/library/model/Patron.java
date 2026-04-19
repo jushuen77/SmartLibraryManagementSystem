@@ -1,8 +1,9 @@
 package library.model;
 
-import data.Database;
 import java.util.ArrayList;
 import java.util.List;
+
+import data.Database;
 
 /** Library patron aligned with the {@code patrons} table (set {@code id} after insert). */
 public class Patron {

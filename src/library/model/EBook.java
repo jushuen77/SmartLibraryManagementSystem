@@ -1,7 +1,8 @@
 package library.model;
 
-import data.Database;
 import java.util.List;
+
+import data.Database;
 
 /** Digital / e-book copy ({@code item_type = DIGITAL} in SQLite). */
 public class EBook extends LibraryItem {

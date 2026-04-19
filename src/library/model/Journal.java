@@ -1,7 +1,8 @@
 package library.model;
 
-import data.Database;
 import java.util.List;
+
+import data.Database;
 
 /** Journal item ({@code item_type = JOURNAL}) in the catalog. */
 public class Journal extends LibraryItem {

@@ -17,16 +17,18 @@
  *
  * Data access lives in data.Database; layout in data.ConsoleUi.
  */
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
+import java.util.Scanner;
+
 import data.ConsoleUi;
 import data.Database;
 import data.Database.ActiveBookLoan;
 import data.Database.StudyBookingRow;
 import data.Database.StudyRoomRow;
 import data.UserSession;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.Scanner;
 import library.CatalogSystem;
 import library.model.Book;
 import library.model.BookReservation;
@@ -214,7 +216,7 @@ public class App {
             ConsoleUi.muted("(You have no borrowed books.)");
         } else {
             for (ActiveBookLoan row : borrowed) {
-                ConsoleUi.listItem(row.title + " | due " + ConsoleUi.formatUkDate(row.dueDate));
+                ConsoleUi.listItem(row.title + " | due " + ConsoleUi.formatDate(row.dueDate));
             }
         }
         pressEnterToContinue(scn);
@@ -444,8 +446,8 @@ public class App {
                                 for (int i = 0; i < borrowed.size(); i++) {
                                     ActiveBookLoan row = borrowed.get(i);
                                     ConsoleUi.numberedLine(i + 1, row.title + " | ISBN: " + row.isbn
-                                            + " | Borrowed " + ConsoleUi.formatUkDate(row.signedOutDate)
-                                            + " | Due " + ConsoleUi.formatUkDate(row.dueDate));
+                                            + " | Borrowed " + ConsoleUi.formatDate(row.signedOutDate)
+                                            + " | Due " + ConsoleUi.formatDate(row.dueDate));
                                 }
                                 ConsoleUi.fieldPrompt("Book number (1-" + borrowed.size() + "), or 0 to cancel");
                                 int pick = scn.nextInt();
@@ -628,7 +630,7 @@ public class App {
                         ConsoleUi.sectionTitle("Your bookings — choose one to cancel");
                         for (int i = 0; i < bookings.size(); i++) {
                             StudyBookingRow b = bookings.get(i);
-                            ConsoleUi.numberedLine(i + 1, b.roomName + " | " + ConsoleUi.formatUkDate(b.bookingDate)
+                            ConsoleUi.numberedLine(i + 1, b.roomName + " | " + ConsoleUi.formatDate(b.bookingDate)
                                     + " " + b.slotLabel);
                         }
                         ConsoleUi.fieldPrompt("Number to cancel (1-" + bookings.size() + "), or 0 to go back");

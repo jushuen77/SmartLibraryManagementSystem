@@ -1,6 +1,8 @@
+
+import java.util.Scanner;
+
 import data.ConsoleUi;
 import data.Database;
-import java.util.Scanner;
 import library.model.PatronType;
 
 /*

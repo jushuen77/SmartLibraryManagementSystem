@@ -1,7 +1,8 @@
+import java.util.Scanner;
+
 import data.ConsoleUi;
 import data.Database;
 import data.UserSession;
-import java.util.Scanner;
 
 /*
  * Library member login (students, faculty, and public members share this flow).

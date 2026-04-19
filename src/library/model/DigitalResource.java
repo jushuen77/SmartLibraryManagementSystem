@@ -1,8 +1,8 @@
 package library.model;
 
-import data.Database;
 import java.util.List;
 
+import data.Database;
 /*
  * Anything in sqlite with item_type = DIGITAL ends up as one of these.
  * reader_content is optional plain text for the built-in "e-book reader" screens in App.

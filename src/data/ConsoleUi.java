@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter;
  */
 public final class ConsoleUi {
 
-    private static final DateTimeFormatter UK_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     /** Text width between the vertical borders of a menu box. */
     private static final int INNER = 54;
@@ -177,10 +177,10 @@ public final class ConsoleUi {
     }
 
     /** Formats a date for display (dd/mm/yyyy). */
-    public static String formatUkDate(LocalDate date) {
+    public static String formatDate(LocalDate date) {
         if (date == null) {
             return "";
         }
-        return UK_DATE.format(date);
+        return DATE.format(date);
     }
 }

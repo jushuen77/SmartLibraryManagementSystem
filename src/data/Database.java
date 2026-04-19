@@ -7,6 +7,7 @@ import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+
 import library.SampleCatalog;
 import library.model.Book;
 import library.model.BookReservation;
@@ -544,7 +545,7 @@ public class Database {
     }
 
     public static boolean isValidEmail(String email) {
-        return email != null && email.matches("^[A-Za-z0-9+_.-]+@(.+)$");
+        return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     }
 
     public static void printAllUsers() {
@@ -1197,8 +1198,8 @@ public class Database {
                 }
                 conn.commit();
                 ConsoleUi.ok("Borrowed successfully.");
-                ConsoleUi.info("Issue date: " + ConsoleUi.formatUkDate(issue));
-                ConsoleUi.info("Due date: " + ConsoleUi.formatUkDate(due));
+                ConsoleUi.info("Issue date: " + ConsoleUi.formatDate(issue));
+                ConsoleUi.info("Due date: " + ConsoleUi.formatDate(due));
                 return true;
             } catch (SQLException e) {
                 conn.rollback();
@@ -1798,7 +1799,7 @@ public class Database {
             e.printStackTrace();
             return;
         }
-        ConsoleUi.reportHeader("Room #" + roomId + "  —  " + ConsoleUi.formatUkDate(bookingDate));
+        ConsoleUi.reportHeader("Room #" + roomId + "  —  " + ConsoleUi.formatDate(bookingDate));
         for (int i = 0; i < STUDY_TIME_SLOTS.length; i++) {
             String slot = STUDY_TIME_SLOTS[i];
             boolean booked = taken.contains(slot);
@@ -1858,7 +1859,7 @@ public class Database {
                 ins.setString(5, LocalDate.now().toString());
                 ins.executeUpdate();
             }
-            ConsoleUi.ok("Study room booked: room #" + roomId + " on " + ConsoleUi.formatUkDate(bookingDate) + " "
+            ConsoleUi.ok("Study room booked: room #" + roomId + " on " + ConsoleUi.formatDate(bookingDate) + " "
                     + slotLabel.trim() + ".");
             return true;
         } catch (SQLException e) {
@@ -1884,7 +1885,7 @@ public class Database {
         }
         int i = 1;
         for (StudyBookingRow r : rows) {
-            ConsoleUi.numberedLine(i, r.roomName + " | " + ConsoleUi.formatUkDate(r.bookingDate)
+            ConsoleUi.numberedLine(i, r.roomName + " | " + ConsoleUi.formatDate(r.bookingDate)
                     + " " + r.slotLabel + "  (booking #" + r.id + ")");
             i++;
         }
