@@ -354,7 +354,7 @@ public class Database {
             return true;
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println("Patron email already exists: " + patron.getEmail());
+                ConsoleUi.ok("Patron email already exists: " + patron.getEmail());
             } else {
                 e.printStackTrace();
             }
@@ -413,7 +413,7 @@ public class Database {
             return true;
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println("Username or email already exists.");
+                ConsoleUi.ok("Username or email already exists.");
             } else {
                 e.printStackTrace();
             }
@@ -547,23 +547,6 @@ public class Database {
         return email != null && email.matches("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
     }
 
-    public static void printAllUsers() {
-        String sql = "SELECT id, name, email FROM users";
-
-        try (Connection conn = getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                System.out.println("ID: " + rs.getInt("id")
-                        + ", Name: " + rs.getString("name")
-                        + ", Email: " + rs.getString("email"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
     /** STUDENT, FACULTY, or PUBLIC */
     public static void addPatron(String name, String email, String patronType) {
         String sql = "INSERT INTO patrons(name, email, patron_type) VALUES(?, ?, ?)";
@@ -573,31 +556,15 @@ public class Database {
             pstmt.setString(2, email);
             pstmt.setString(3, patronType.toUpperCase());
             pstmt.executeUpdate();
-            System.out.println("Patron registered.");
+            ConsoleUi.ok("Patron registered.");
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("UNIQUE constraint failed")) {
-                System.out.println("Email already registered as a patron.");
+                ConsoleUi.ok("Email already registered as a patron.");
             } else if (e.getMessage() != null && e.getMessage().contains("CHECK constraint")) {
-                System.out.println("Invalid patron type. Use STUDENT, FACULTY, or PUBLIC.");
+                ConsoleUi.ok("Invalid patron type. Use STUDENT, FACULTY, or PUBLIC.");
             } else {
                 e.printStackTrace();
             }
-        }
-    }
-
-    public static void printAllPatrons() {
-        String sql = "SELECT id, name, email, patron_type FROM patrons ORDER BY id";
-        try (Connection conn = getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                System.out.println("ID: " + rs.getInt("id")
-                        + ", " + rs.getString("name")
-                        + ", " + rs.getString("email")
-                        + ", " + rs.getString("patron_type"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 
@@ -670,10 +637,10 @@ public class Database {
             pstmt.setString(4, isbn == null || isbn.isBlank() ? null : isbn);
             pstmt.setString(5, genre == null || genre.isBlank() ? null : genre);
             pstmt.executeUpdate();
-            System.out.println("Item added to catalog.");
+            ConsoleUi.ok("Item added to catalog.");
         } catch (SQLException e) {
             if (e.getMessage() != null && e.getMessage().contains("CHECK constraint")) {
-                System.out.println("Invalid item type. Use BOOK, JOURNAL, or DIGITAL.");
+                ConsoleUi.ok("Invalid item type. Use BOOK, JOURNAL, or DIGITAL.");
             } else {
                 e.printStackTrace();
             }
@@ -693,7 +660,7 @@ public class Database {
         book.setLoanPolicy(loanDurationDays, borrowingLimit, dailyFine);
         boolean ok = saveItem(book);
         if (ok) {
-            System.out.println("New acquisition added to inventory.");
+            ConsoleUi.ok("New acquisition added to inventory.");
         }
         return ok;
     }
@@ -703,7 +670,7 @@ public class Database {
      */
     public static boolean removeDamagedBookByIsbn(String isbn) {
         if (isbn == null || isbn.isBlank()) {
-            System.out.println("ISBN is required.");
+            ConsoleUi.ok("ISBN is required.");
             return false;
         }
         String key = InputValidation.normalizeIsbn(isbn);
@@ -727,7 +694,7 @@ public class Database {
                 }
                 if (itemId == null) {
                     conn.rollback();
-                    System.out.println("No book found with that ISBN.");
+                    ConsoleUi.ok("No book found with that ISBN.");
                     return false;
                 }
                 try (PreparedStatement closeLoan = conn.prepareStatement(
@@ -741,12 +708,12 @@ public class Database {
                     lost.setInt(1, itemId);
                     if (lost.executeUpdate() != 1) {
                         conn.rollback();
-                        System.out.println("Could not update book status.");
+                        ConsoleUi.ok("Could not update book status.");
                         return false;
                     }
                 }
                 conn.commit();
-                System.out.println("Book marked as lost/damaged and removed from circulation.");
+                ConsoleUi.ok("Book marked as lost/damaged and removed from circulation.");
                 return true;
             } catch (SQLException e) {
                 conn.rollback();
@@ -834,7 +801,7 @@ public class Database {
      */
     public static boolean recordFinePayment(int fineId, double payment) {
         if (fineId <= 0 || payment <= 0) {
-            System.out.println("Fine id and a positive payment amount are required.");
+            ConsoleUi.ok("Fine id and a positive payment amount are required.");
             return false;
         }
         String selectSql = "SELECT amount, amount_paid FROM fines WHERE id = ?";
@@ -849,7 +816,7 @@ public class Database {
                     try (ResultSet rs = sel.executeQuery()) {
                         if (!rs.next()) {
                             conn.rollback();
-                            System.out.println("No fine found with that id.");
+                            ConsoleUi.ok("No fine found with that id.");
                             return false;
                         }
                         amount = rs.getDouble("amount");
@@ -859,7 +826,7 @@ public class Database {
                 double remaining = amount - paidSoFar;
                 if (remaining <= 0.0001) {
                     conn.rollback();
-                    System.out.println("This fine is already fully paid.");
+                    ConsoleUi.ok("This fine is already fully paid.");
                     return false;
                 }
                 double applied = Math.min(payment, remaining);
@@ -870,11 +837,11 @@ public class Database {
                     upd.executeUpdate();
                 }
                 conn.commit();
-                System.out.println("Payment recorded: $" + String.format("%.2f", applied) + ".");
+                ConsoleUi.ok("Payment recorded: $" + String.format("%.2f", applied) + ".");
                 if (newPaid + 0.0001 >= amount) {
-                    System.out.println("Fine #" + fineId + " is now fully paid.");
+                    ConsoleUi.ok("Fine #" + fineId + " is now fully paid.");
                 } else {
-                    System.out.println("Remaining balance: $" + String.format("%.2f", amount - newPaid) + ".");
+                    ConsoleUi.ok("Remaining balance: $" + String.format("%.2f", amount - newPaid) + ".");
                 }
                 return true;
             } catch (SQLException e) {
@@ -917,25 +884,6 @@ public class Database {
                 while (rs.next()) {
                     ConsoleUi.listItem(rs.getString("item_type") + ": " + rs.getInt("total"));
                 }
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public static void printAllItems() {
-        String sql = "SELECT id, item_type, title, author, isbn, genre, status FROM items ORDER BY id";
-        try (Connection conn = getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                System.out.println("ID: " + rs.getInt("id")
-                        + " [" + rs.getString("item_type") + "] "
-                        + rs.getString("title")
-                        + " | " + rs.getString("author")
-                        + " | ISBN: " + rs.getString("isbn")
-                        + " | " + rs.getString("genre")
-                        + " | " + rs.getString("status"));
             }
         } catch (SQLException e) {
             e.printStackTrace();
@@ -1508,7 +1456,7 @@ public class Database {
     /** ISBN → item id → same as returnItem() (wrapper for the console UI). */
     public static boolean returnBookByIsbn(String isbn) {
         if (isbn == null || isbn.isBlank()) {
-            System.out.println("ISBN is required.");
+            ConsoleUi.ok("ISBN is required.");
             return false;
         }
         String sql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
@@ -1517,7 +1465,7 @@ public class Database {
             ps.setString(1, isbn.trim());
             try (ResultSet rs = ps.executeQuery()) {
                 if (!rs.next()) {
-                    System.out.println("No book found with that ISBN.");
+                    ConsoleUi.ok("No book found with that ISBN.");
                     return false;
                 }
                 return returnItem(rs.getInt("id"));
@@ -1611,30 +1559,6 @@ public class Database {
         } catch (SQLException e) {
             e.printStackTrace();
             return false;
-        }
-    }
-
-    public static void printActiveLoans() {
-        String sql = """
-                SELECT l.id, l.patron_id, p.name, l.item_id, i.title, l.issue_date, l.due_date
-                FROM loans l
-                JOIN patrons p ON p.id = l.patron_id
-                JOIN items i ON i.id = l.item_id
-                WHERE l.return_date IS NULL
-                ORDER BY l.due_date
-                """;
-        try (Connection conn = getConnection();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)) {
-            while (rs.next()) {
-                System.out.println("Loan #" + rs.getInt("id")
-                        + " | Patron " + rs.getInt("patron_id") + " (" + rs.getString("name") + ")"
-                        + " | Item " + rs.getInt("item_id") + ": " + rs.getString("title")
-                        + " | Issued " + rs.getString("issue_date")
-                        + " | Due " + rs.getString("due_date"));
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
         }
     }
 

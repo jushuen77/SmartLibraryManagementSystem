@@ -111,9 +111,8 @@ public final class ConsoleUi {
         blank();
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
         System.out.println(panelLine("G4 Smart Library"));
-        System.out.println(panelLine("Catalog, loans, fines, study rooms"));
+        System.out.println(panelLine("Catalog, Loans, Fines, Study Rooms, etc."));
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
-        blank();
     }
 
     /** Top of a numbered menu: title row + separator under it. */

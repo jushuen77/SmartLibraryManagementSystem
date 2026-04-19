@@ -51,20 +51,7 @@ public class App {
         ConsoleUi.pauseThenClear(scn);
     }
 
-    /** Asks until the user enters a valid ISBN-10 or ISBN-13 (check digit verified). */
-    private static String promptValidIsbn(Scanner scn, String fieldLabel) {
-        while (true) {
-            ConsoleUi.fieldPrompt(fieldLabel);
-            String raw = scn.nextLine();
-            String err = InputValidation.validateIsbn(raw);
-            if (err == null) {
-                return InputValidation.normalizeIsbn(raw);
-            }
-            ConsoleUi.warn(err);
-        }
-    }
-
-    /** Same as {@link #promptValidIsbn} but user may enter {@code 0} or {@code cancel} to abort (returns {@code null}). */
+    /** Asks until the user enters a valid ISBN-10 or ISBN-13 (check digit verified). User may enter {@code 0} or {@code cancel} to abort (returns {@code null}). */
     private static String promptValidIsbnOrCancel(Scanner scn, String fieldLabel) {
         while (true) {
             ConsoleUi.fieldPrompt(fieldLabel + " (0 or cancel = go back)");
@@ -82,7 +69,7 @@ public class App {
 
     private static void runLibrarianAddBook(Scanner scn) {
         ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("New book acquisition");
+        ConsoleUi.sectionTitle("New Book Acquisition");
         ConsoleUi.muted("Tip: 0 alone cancels at Title / Author / Genre / loan fields. ISBN: 0 or cancel. Daily fine: type cancel to abort (0.00 is a valid fine).");
         String title;
         while (true) {
@@ -175,10 +162,10 @@ public class App {
             if (mainMenuVisits++ > 0) {
                 ConsoleUi.clearScreen();
             }
-            ConsoleUi.menuStart("Main menu");
-            ConsoleUi.menuOption(1, "Library member login");
-            ConsoleUi.menuOption(2, "Register");
-            ConsoleUi.menuOption(3, "Librarian staff login");
+            ConsoleUi.menuStart("Main Menu");
+            ConsoleUi.menuOption(1, "Login as Member");
+            ConsoleUi.menuOption(2, "Register as Member");
+            ConsoleUi.menuOption(3, "Login as Librarian Staff");
             ConsoleUi.menuOption(4, "Exit");
             ConsoleUi.menuEnd();
 
@@ -187,7 +174,7 @@ public class App {
             switch (choice) {
                 case 1:
                     if (UserSession.isLoggedIn()) {
-                        ConsoleUi.sectionTitle("Library member login");
+                        ConsoleUi.sectionTitle("Library Member Login");
                         ConsoleUi.info("Already signed in as " + UserSession.getDisplayName()
                                 + " (" + UserSession.getMemberType().toDisplayString() + ") <"
                                 + UserSession.getEmail() + ">.");
@@ -236,16 +223,16 @@ public class App {
                 ConsoleUi.blank();
                 showSignedInBanner = false;
             }
-            ConsoleUi.menuStart("Library portal");
-            ConsoleUi.menuOption(1, "View books");
-            ConsoleUi.menuOption(2, "View journals");
-            ConsoleUi.menuOption(3, "View digital resources");
-            ConsoleUi.menuOption(4, "My profile");
+            ConsoleUi.menuStart("Library Portal");
+            ConsoleUi.menuOption(1, "View Books");
+            ConsoleUi.menuOption(2, "View Journals");
+            ConsoleUi.menuOption(3, "View Digital Resources");
+            ConsoleUi.menuOption(4, "My Profile");
             ConsoleUi.menuOption(5, "Catalog");
-            ConsoleUi.menuOption(6, "E-book reader");
-            ConsoleUi.menuOption(7, "Study room booking");
-            ConsoleUi.menuOption(8, "Log out");
-            ConsoleUi.menuOption(9, "Back to main menu");
+            ConsoleUi.menuOption(6, "E-book Reader");
+            ConsoleUi.menuOption(7, "Study Room Booking");
+            ConsoleUi.menuOption(8, "Log Out");
+            ConsoleUi.menuOption(9, "Back to Main Menu");
             ConsoleUi.menuEnd();
             int libraryChoice = InputReaders.readMenuInt(scn, 1, 9);
             switch (libraryChoice) {
@@ -296,19 +283,19 @@ public class App {
         }
         Patron profile = Database.getPatronByEmail(UserSession.getEmail());
         ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("My profile");
+        ConsoleUi.sectionTitle("My Profile");
         if (profile == null) {
             ConsoleUi.warn("No library member profile is linked to this sign-in. Ask staff to link your account, or register again.");
             pressEnterToContinue(scn);
             return;
         }
-        ConsoleUi.muted("Sign-in name: " + UserSession.getDisplayName());
+        ConsoleUi.muted("Sign-in Name: " + UserSession.getDisplayName());
         for (String line : profile.profileLines()) {
             ConsoleUi.listItem(line);
         }
         List<ActiveBookLoan> borrowed = Database.getActiveBookLoansForPatron(UserSession.getEmail());
         ConsoleUi.blank();
-        ConsoleUi.muted("Books borrowed right now: " + borrowed.size());
+        ConsoleUi.muted("Books Borrowed Currently: " + borrowed.size());
         if (borrowed.isEmpty()) {
             ConsoleUi.muted("(You have no borrowed books.)");
         } else {
@@ -351,7 +338,7 @@ public class App {
 
     private static void showDigitalResourcesPage(Scanner scn) {
         ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("Digital resources");
+        ConsoleUi.sectionTitle("Digital Resources");
         for (DigitalResource d : DigitalResource.fetchAllFromDatabase()) {
             ConsoleUi.listItem(d.getTitle() + " by " + d.getAuthor());
         }
@@ -373,18 +360,18 @@ public class App {
         while (inCatalogMenu) {
             ConsoleUi.clearScreen();
             ConsoleUi.menuStart("Catalog");
-            ConsoleUi.menuOption(1, "Browse by genre");
-            ConsoleUi.menuOption(2, "Browse by author");
-            ConsoleUi.menuOption(3, "Search book availability");
-            ConsoleUi.menuOption(4, "Borrow a book");
-            ConsoleUi.menuOption(5, "Return a book");
-            ConsoleUi.menuOption(6, "Back to library portal");
+            ConsoleUi.menuOption(1, "Browse by Genre");
+            ConsoleUi.menuOption(2, "Browse by Author");
+            ConsoleUi.menuOption(3, "Search book Availability");
+            ConsoleUi.menuOption(4, "Borrow a Book");
+            ConsoleUi.menuOption(5, "Return a Book");
+            ConsoleUi.menuOption(6, "Back to Library Portal");
             ConsoleUi.menuEnd();
 
             int choice = InputReaders.readMenuInt(scn, 1, 6);
             switch (choice) {
                     case 1:
-                        ConsoleUi.sectionTitle("By genre");
+                        ConsoleUi.sectionTitle("By Genre");
                         for (Map.Entry<String, List<LibraryItem>> entry : CatalogSystem.organizeByGenre().entrySet()) {
                             ConsoleUi.muted(entry.getKey());
                             for (LibraryItem item : entry.getValue()) {
@@ -395,7 +382,7 @@ public class App {
                         pressEnterToContinue(scn);
                         break;
                     case 2:
-                        ConsoleUi.sectionTitle("By author");
+                        ConsoleUi.sectionTitle("By Author");
                         for (Map.Entry<String, List<LibraryItem>> entry : CatalogSystem.organizeByAuthor().entrySet()) {
                             ConsoleUi.muted(entry.getKey());
                             for (LibraryItem item : entry.getValue()) {
@@ -406,7 +393,7 @@ public class App {
                         pressEnterToContinue(scn);
                         break;
                     case 3:
-                        ConsoleUi.fieldPrompt("Book title or ISBN (0 = cancel)");
+                        ConsoleUi.fieldPrompt("Book Title or ISBN (0 = cancel)");
                         String query = scn.nextLine().trim();
                         if ("0".equals(query)) {
                             ConsoleUi.info("Search cancelled.");
@@ -417,7 +404,7 @@ public class App {
                         if (matches.isEmpty()) {
                             ConsoleUi.info("No books matched that search.");
                         } else {
-                            ConsoleUi.sectionTitle("Matching books");
+                            ConsoleUi.sectionTitle("Matching Books");
                             for (LibraryItem item : matches) {
                                 ConsoleUi.listItem(item.getTitle()
                                         + " | ISBN: " + item.getIsbn()
@@ -476,10 +463,10 @@ public class App {
                         ConsoleUi.info("Signed in as: " + UserSession.getDisplayName()
                                 + " (" + UserSession.getMemberType().toDisplayString() + ") <" + patronEmail + ">");
                         ConsoleUi.menuStart("Borrow by");
-                        ConsoleUi.menuOption(1, "Pick from available books");
-                        ConsoleUi.menuOption(2, "Search by title keywords");
+                        ConsoleUi.menuOption(1, "Pick from Available Books");
+                        ConsoleUi.menuOption(2, "Search by Title Keywords");
                         ConsoleUi.menuOption(3, "Enter ISBN");
-                        ConsoleUi.menuOption(4, "Back to catalog");
+                        ConsoleUi.menuOption(4, "Back to Catalog");
                         ConsoleUi.menuEnd();
                         int borrowMethod = InputReaders.readMenuInt(scn, 1, 4);
                         switch (borrowMethod) {
@@ -491,7 +478,7 @@ public class App {
                                     ConsoleUi.info("No available books right now.");
                                     break;
                                 }
-                                ConsoleUi.sectionTitle("Available books");
+                                ConsoleUi.sectionTitle("Available Books");
                                 for (int i = 0; i < availableBooks.size(); i++) {
                                     Book b = availableBooks.get(i);
                                     ConsoleUi.numberedLine(i + 1, b.getTitle() + " | ISBN: " + b.getIsbn());
@@ -522,7 +509,7 @@ public class App {
                                     Database.borrowBookByPatronEmailAndIsbn(patronEmail, titleMatches.get(0).getIsbn());
                                     break;
                                 }
-                                ConsoleUi.sectionTitle("Pick a book");
+                                ConsoleUi.sectionTitle("Pick a Book");
                                 for (int i = 0; i < titleMatches.size(); i++) {
                                     Book b = titleMatches.get(i);
                                     ConsoleUi.numberedLine(i + 1, b.getTitle() + " | ISBN: " + b.getIsbn());
@@ -558,17 +545,17 @@ public class App {
                             pressEnterToContinue(scn);
                             break;
                         }
-                        ConsoleUi.menuStart("Return a book");
-                        ConsoleUi.menuOption(1, "Choose from my borrowed books");
+                        ConsoleUi.menuStart("Return a Book");
+                        ConsoleUi.menuOption(1, "Choose from My Borrowed Books");
                         ConsoleUi.menuOption(2, "Enter ISBN");
-                        ConsoleUi.menuOption(3, "Back to catalog");
+                        ConsoleUi.menuOption(3, "Back to Catalog");
                         ConsoleUi.menuEnd();
                         int retMethod = InputReaders.readMenuInt(scn, 1, 3);
                         switch (retMethod) {
                             case 3:
                                 break;
                             case 1:
-                                ConsoleUi.sectionTitle("Books you have borrowed");
+                                ConsoleUi.sectionTitle("Books You have Borrowed");
                                 for (int i = 0; i < borrowed.size(); i++) {
                                     ActiveBookLoan row = borrowed.get(i);
                                     ConsoleUi.numberedLine(i + 1, row.title + " | ISBN: " + row.isbn
@@ -617,7 +604,7 @@ public class App {
             return;
         }
         ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("E-book reader");
+        ConsoleUi.sectionTitle("E-book Reader");
         for (int i = 0; i < list.size(); i++) {
             DigitalResource d = list.get(i);
             boolean hasText = d.getReaderContent() != null && !d.getReaderContent().isBlank();
@@ -625,7 +612,7 @@ public class App {
                     + (hasText ? "" : "  (no reader text yet)"));
         }
         int backChoice = list.size() + 1;
-        ConsoleUi.numberedLine(backChoice, "Back to library portal");
+        ConsoleUi.numberedLine(backChoice, "Back to Library Portal");
         ConsoleUi.fieldPrompt("Open title # (1-" + list.size() + ") or " + backChoice + " to go back");
         int pick = InputReaders.readIntInRange(scn, 1, backChoice,
                 "Open title # (1-" + list.size() + ") or " + backChoice + " to go back");
@@ -677,11 +664,11 @@ public class App {
         boolean sub = true;
         while (sub) {
             ConsoleUi.clearScreen();
-            ConsoleUi.menuStart("Study room booking");
-            ConsoleUi.menuOption(1, "List rooms & book a slot");
-            ConsoleUi.menuOption(2, "My bookings");
-            ConsoleUi.menuOption(3, "Cancel a booking");
-            ConsoleUi.menuOption(4, "Back to library portal");
+            ConsoleUi.menuStart("Study Room Booking");
+            ConsoleUi.menuOption(1, "List Rooms & Book a Slot");
+            ConsoleUi.menuOption(2, "My Bookings");
+            ConsoleUi.menuOption(3, "Cancel a Booking");
+            ConsoleUi.menuOption(4, "Back to Library Portal");
             ConsoleUi.menuEnd();
             int c = InputReaders.readMenuInt(scn, 1, 4);
             switch (c) {
@@ -697,12 +684,12 @@ public class App {
                             pressEnterToContinue(scn);
                             break;
                         }
-                        ConsoleUi.sectionTitle("Choose a room");
+                        ConsoleUi.sectionTitle("Choose a Room");
                         for (int i = 0; i < rooms.size(); i++) {
                             StudyRoomRow r = rooms.get(i);
                             ConsoleUi.numberedLine(i + 1, r.name + " | seats " + r.capacity);
                         }
-                        ConsoleUi.fieldPrompt("Room number (1-" + rooms.size() + ", 0 = cancel)");
+                        ConsoleUi.fieldPrompt("Room Number (1-" + rooms.size() + ", 0 = cancel)");
                         Integer roomPickBoxed = InputReaders.readIntInRangeOrZeroCancel(scn, 1, rooms.size(),
                                 "Room number (1-" + rooms.size() + ", 0 = cancel)");
                         if (roomPickBoxed == null) {
@@ -759,13 +746,13 @@ public class App {
                             pressEnterToContinue(scn);
                             break;
                         }
-                        ConsoleUi.sectionTitle("Your bookings — choose one to cancel");
+                        ConsoleUi.sectionTitle("Your Bookings — Choose One to Cancel");
                         for (int i = 0; i < bookings.size(); i++) {
                             StudyBookingRow b = bookings.get(i);
                             ConsoleUi.numberedLine(i + 1, b.roomName + " | " + ConsoleUi.formatDate(b.bookingDate)
                                     + " " + b.slotLabel);
                         }
-                        ConsoleUi.fieldPrompt("Number to cancel (1-" + bookings.size() + "), or 0 to go back");
+                        ConsoleUi.fieldPrompt("Number to Cancel (1-" + bookings.size() + "), or 0 to go back");
                         int cancelPick = InputReaders.readIntInRange(scn, 0, bookings.size(),
                                 "Number to cancel (1-" + bookings.size() + "), or 0 to go back");
                         if (cancelPick == 0) {
@@ -794,19 +781,19 @@ public class App {
         while (inStaffMenu) {
             ConsoleUi.clearScreen();
             if (showStaffBanner) {
-                ConsoleUi.ok("Librarian portal (staff mode).");
+                ConsoleUi.ok("Librarian Portal (Staff Mode).");
                 ConsoleUi.blank();
                 showStaffBanner = false;
             }
-            ConsoleUi.menuStart("Librarian portal");
-            ConsoleUi.menuOption(1, "Add new acquisition (book)");
-            ConsoleUi.menuOption(2, "Mark book lost / damaged (ISBN)");
-            ConsoleUi.menuOption(3, "Audit inventory");
-            ConsoleUi.menuOption(4, "List lost books");
-            ConsoleUi.menuOption(5, "View outstanding fines");
-            ConsoleUi.menuOption(6, "Record fine payment");
-            ConsoleUi.menuOption(7, "View registered patrons");
-            ConsoleUi.menuOption(8, "Back to main menu");
+            ConsoleUi.menuStart("Librarian Portal");
+            ConsoleUi.menuOption(1, "Add New Book Acquisition");
+            ConsoleUi.menuOption(2, "Mark Lost / Damanged Books (ISBN)");
+            ConsoleUi.menuOption(3, "Audit Inventory");
+            ConsoleUi.menuOption(4, "List Lost Books");
+            ConsoleUi.menuOption(5, "View Outstanding Fines");
+            ConsoleUi.menuOption(6, "Record Fine Payment");
+            ConsoleUi.menuOption(7, "View Registered Patrons");
+            ConsoleUi.menuOption(8, "Back to Main Menu");
             ConsoleUi.menuEnd();
             int choice = InputReaders.readMenuInt(scn, 1, 8);
             switch (choice) {
@@ -815,7 +802,7 @@ public class App {
                         pressEnterToContinue(scn);
                         break;
                     case 2:
-                        String damagedIsbn = promptValidIsbnOrCancel(scn, "ISBN to mark lost/damaged");
+                        String damagedIsbn = promptValidIsbnOrCancel(scn, "ISBN to mark as lost or damaged");
                         if (damagedIsbn != null) {
                             Database.removeDamagedBookByIsbn(damagedIsbn);
                         } else {
@@ -836,9 +823,9 @@ public class App {
                         pressEnterToContinue(scn);
                         break;
                     case 6:
-                        ConsoleUi.fieldPrompt("Fine id (1-" + 99_999_999 + ", 0 = cancel)");
+                        ConsoleUi.fieldPrompt("Fine ID (1-" + 99_999_999 + ", 0 = cancel)");
                         Integer fineIdBoxed = InputReaders.readIntInRangeOrZeroCancel(scn, 1, 99_999_999,
-                                "Fine id (positive integer, 0 = cancel)");
+                                "Fine ID (positive integer, 0 = cancel)");
                         if (fineIdBoxed == null) {
                             ConsoleUi.info("Fine payment cancelled.");
                             pressEnterToContinue(scn);
@@ -874,7 +861,7 @@ public class App {
 
     private static void showPatronsPage(Scanner scn) {
         ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("Registered patrons");
+        ConsoleUi.sectionTitle("Registered Patrons");
         for (Patron p : Patron.fetchAllFromDatabase()) {
             ConsoleUi.listItem(p.getName() + " (" + p.getPatronType().toDisplayString() + ")");
         }
