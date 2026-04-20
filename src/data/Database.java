@@ -1513,6 +1513,10 @@ public class Database {
             ConsoleUi.warn("Patron email is required.");
             return false;
         }
+        if (bookingDate == null) {
+            ConsoleUi.warn("Booking date is required.");
+            return false;
+        }
         if (!isStudySlotValid(slotLabel)) {
             ConsoleUi.warn("Invalid time slot.");
             return false;

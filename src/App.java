@@ -656,12 +656,13 @@ public class App {
                             ConsoleUi.pauseThenClear(scn);
                             break;
                         }
-                        LocalDate bookingDay = Database.parseFlexibleDate(dateLine);
-                        if (bookingDay == null) {
-                            ConsoleUi.warn("That date was not understood. Use day/month/year with slashes, for example 17/04/2026.");
+                        String bookingDateError = InputValidation.validateStudyBookingDate(dateLine);
+                        if (bookingDateError != null) {
+                            ConsoleUi.warn(bookingDateError);
                             ConsoleUi.pauseThenClear(scn);
                             break;
                         }
+                        LocalDate bookingDay = InputValidation.parseStudyBookingDate(dateLine);
                         Database.printStudySlotsForRoom(roomId, bookingDay);
                         ConsoleUi.fieldPrompt("Slot number (1-" + Database.STUDY_TIME_SLOTS.length + ", 0 = cancel)");
                         Integer snBoxed = InputReaders.readIntInRangeOrZeroCancel(scn, 1, Database.STUDY_TIME_SLOTS.length,

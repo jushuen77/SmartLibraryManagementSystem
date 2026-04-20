@@ -25,7 +25,7 @@ public final class ConsoleUi {
     }
 
     private static String hbar() {
-        return repeat('\u2500', INNER + 2);
+        return repeat('-', INNER + 2);
     }
 
     //try to read the current window like size dimension. if cannot read thne just use 120
@@ -72,6 +72,13 @@ public final class ConsoleUi {
             t = t.substring(0, INNER - 3) + "...";
         }
         return leftPad() + "| " + String.format("%-" + INNER + "s", t) + " |";
+    }
+
+    // Shared bordered title block so all headers match the main menu frame.
+    private static void boxedTitle(String title) {
+        System.out.println(leftPad() + "+" + hbar() + "+");
+        System.out.println(panelLine(title));
+        System.out.println(leftPad() + "+" + hbar() + "+");
     }
 
     public static void blank() {
@@ -139,10 +146,7 @@ public final class ConsoleUi {
     //Section title for list pages (books, journals, …). 
     public static void sectionTitle(String title) {
         blank();
-        String titleLine = "-- " + title + " --";
-        String underline = repeat('-', Math.min(56, title.length() + 8));
-        System.out.println(leftPadForWidth(titleLine.length()) + titleLine);
-        System.out.println(leftPadForWidth(underline.length()) + underline);
+        boxedTitle(title);
     }
 
     public static void listItem(String line) {
@@ -190,19 +194,14 @@ public final class ConsoleUi {
     //Framed block title for database report blocks.
     public static void reportHeader(String title) {
         blank();
-        System.out.println(leftPad() + "\u250C" + hbar() + "\u2510");
-        System.out.println(panelLine(title));
-        System.out.println(leftPad() + "\u2514" + hbar() + "\u2518");
+        boxedTitle(title);
     }
 
     //Reader / sub-screen divider. 
     public static void readerPageBar(String title, int page, int total) {
-        String bar = repeat('\u2500', 48);
-        String text = title + "  \u2014  page " + page + "/" + total;
+        String text = title + " - page " + page + "/" + total;
         System.out.println();
-        System.out.println(leftPadForWidth(bar.length()) + bar);
-        System.out.println(leftPadForWidth(text.length()) + text);
-        System.out.println(leftPadForWidth(bar.length()) + bar);
+        boxedTitle(text);
     }
 
     public static void readerControlsHint() {

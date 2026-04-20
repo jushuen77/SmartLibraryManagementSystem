@@ -1,5 +1,7 @@
 package data;
 
+import java.time.LocalDate;
+
 // ISBN checks for books; password rules for registration.
 public final class InputValidation {
 
@@ -129,5 +131,26 @@ public final class InputValidation {
         int check = s.charAt(12) - '0';
         int expected = (10 - (sum % 10)) % 10;
         return check == expected;
+    }
+
+    // validate and parse booking date used in study-room flow.
+    public static LocalDate parseStudyBookingDate(String raw) {
+        LocalDate date = Database.parseFlexibleDate(raw);
+        if (date == null || date.isBefore(LocalDate.now())) {
+            return null;
+        }
+        return date;
+    }
+
+    // human-friendly validation message for study-room booking date.
+    public static String validateStudyBookingDate(String raw) {
+        LocalDate parsed = Database.parseFlexibleDate(raw);
+        if (parsed == null) {
+            return "That date was not understood. Use day/month/year with slashes, for example 17/04/2026.";
+        }
+        if (parsed.isBefore(LocalDate.now())) {
+            return "Cannot book a date in the past.";
+        }
+        return null;
     }
 }

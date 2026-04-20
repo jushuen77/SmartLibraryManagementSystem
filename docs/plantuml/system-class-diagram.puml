@@ -1,0 +1,241 @@
+@startuml smart_library_class_diagram
+title Smart Library Management System - Class Diagram
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "app (default package)" {
+  class App {
+    +main(args : String[])
+  }
+
+  class Login {
+    +prompt(scn : Scanner) : boolean
+  }
+
+  class Register {
+    +prompt(scn : Scanner)
+  }
+
+  class LibrarianLogin {
+    +prompt(scn : Scanner) : boolean
+  }
+}
+
+package "data" {
+  class Database <<utility>> {
+    +STUDY_TIME_SLOTS : String[]
+    +createTable()
+    +addUser(name, email, password) : boolean
+    +findUserNameEmailIfValidCredentials(...) : String[]
+    +ensurePatronForNewUser(...) : void
+    +getPatronTypeForEmail(email : String) : PatronType
+    +getAllPatrons() : List<Patron>
+    +getPatronByEmail(email : String) : Patron
+    +getAllCatalogItems() : List<LibraryItem>
+    +borrowBookByPatronEmailAndIsbn(...) : boolean
+    +returnBookByPatronEmailAndIsbn(...) : boolean
+    +addBookReservation(reservation : BookReservation) : boolean
+    +bookStudyRoom(...) : boolean
+    +cancelStudyBooking(...) : boolean
+    +recordFinePayment(...) : boolean
+    +printInventoryAudit()
+  }
+
+  class ConsoleUi <<utility>>
+  class InputReaders <<utility>>
+  class InputValidation <<utility>>
+  class UserSession <<utility>> {
+    -displayName : String
+    -email : String
+    -memberType : PatronType
+    +set(name : String, canonicalEmail : String, type : PatronType) : void
+    +clear() : void
+    +isLoggedIn() : boolean
+    +getDisplayName() : String
+    +getEmail() : String
+    +getMemberType() : PatronType
+  }
+
+  class ActiveBookLoan <<nested DTO>> {
+    +itemId : int
+    +title : String
+    +isbn : String
+    +signedOutDate : LocalDate
+    +dueDate : LocalDate
+  }
+
+  class StudyRoomRow <<nested DTO>> {
+    +id : int
+    +name : String
+    +capacity : int
+  }
+
+  class StudyBookingRow <<nested DTO>> {
+    +id : int
+    +roomName : String
+    +bookingDate : LocalDate
+    +slotLabel : String
+  }
+}
+
+package "library" {
+  class CatalogSystem <<utility>> {
+    +allItems() : List<LibraryItem>
+    +organizeByGenre() : Map<String, List<LibraryItem>>
+    +organizeByAuthor() : Map<String, List<LibraryItem>>
+    +findByIsbn(isbn : String) : LibraryItem
+    +searchBooks(query : String) : List<LibraryItem>
+  }
+
+  class SampleCatalog <<utility>> {
+    +samplePatrons() : List<Patron>
+    +sampleBooks() : List<Book>
+    +sampleJournals() : List<Journal>
+    +sampleDigitalResources() : List<DigitalResource>
+  }
+}
+
+package "library.model" {
+  abstract class LibraryItem {
+    -id : int
+    -title : String
+    -author : String
+    -isbn : String
+    -genre : String
+    -status : ItemStatus
+    -loanDurationDays : int
+    -borrowingLimit : int
+    -dailyFine : double
+    +getSqlItemType() : String
+    +getId() : int
+    +setId(id : int) : void
+    +getTitle() : String
+    +getAuthor() : String
+    +getIsbn() : String
+    +getGenre() : String
+    +getStatus() : ItemStatus
+    +setStatus(status : ItemStatus) : void
+    +getLoanDurationDays() : int
+    +getBorrowingLimit() : int
+    +getDailyFine() : double
+    +setLoanPolicy(loanDurationDays : int, borrowingLimit : int, dailyFine : double) : void
+    +toString() : String
+  }
+
+  class Book {
+    +getSqlItemType() : String
+    +fetchAllFromDatabase() : List<Book>
+  }
+
+  class Journal {
+    +getSqlItemType() : String
+    +fetchAllFromDatabase() : List<Journal>
+  }
+
+  class DigitalResource {
+    -readerContent : String
+    +getSqlItemType() : String
+    +getReaderContent() : String
+    +setReaderContent(readerContent : String) : void
+    +fetchAllFromDatabase() : List<DigitalResource>
+  }
+
+  class Patron {
+    -id : int
+    -name : String
+    -email : String
+    -patronType : PatronType
+    +getId() : int
+    +setId(id : int) : void
+    +getName() : String
+    +getEmail() : String
+    +getPatronType() : PatronType
+    +toString() : String
+    +profileLines() : List<String>
+    +fetchAllFromDatabase() : List<Patron>
+  }
+
+  class BookReservation {
+    -id : int
+    -itemId : int
+    -requesterName : String
+    -requesterEmail : String
+    -status : String
+    -requestDate : String
+    +getId() : int
+    +setId(id : int) : void
+    +getItemId() : int
+    +getRequesterName() : String
+    +getRequesterEmail() : String
+    +getStatus() : String
+    +getRequestDate() : String
+  }
+
+  enum ItemStatus {
+    AVAILABLE
+    ON_LOAN
+    LOST
+  }
+
+  enum PatronType {
+    STUDENT
+    FACULTY
+    PUBLIC
+    +toDisplayString() : String
+    +maxConcurrentLoans() : int
+    +effectiveLoanDays(bookLoanDays : int) : int
+  }
+}
+
+' Inheritance
+LibraryItem <|-- Book
+LibraryItem <|-- Journal
+LibraryItem <|-- DigitalResource
+
+' Enum usage
+LibraryItem --> ItemStatus
+Patron --> PatronType
+UserSession --> PatronType
+
+' App orchestration
+App ..> Login
+App ..> Register
+App ..> LibrarianLogin
+App ..> ConsoleUi
+App ..> InputReaders
+App ..> InputValidation
+App ..> UserSession
+App ..> Database
+App ..> CatalogSystem
+App ..> Book
+App ..> Journal
+App ..> DigitalResource
+App ..> Patron
+App ..> BookReservation
+
+' Data-layer dependencies
+Database ..> SampleCatalog
+Database ..> InputValidation
+Database ..> ConsoleUi
+Database ..> Book
+Database ..> Journal
+Database ..> DigitalResource
+Database ..> LibraryItem
+Database ..> Patron
+Database ..> PatronType
+Database ..> BookReservation
+
+' Catalog / sample dependencies
+CatalogSystem ..> Database
+CatalogSystem ..> InputValidation
+SampleCatalog ..> Book
+SampleCatalog ..> Journal
+SampleCatalog ..> DigitalResource
+SampleCatalog ..> Patron
+
+' Nested DTO ownership
+Database +-- ActiveBookLoan
+Database +-- StudyRoomRow
+Database +-- StudyBookingRow
+
+@enduml
