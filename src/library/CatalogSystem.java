@@ -56,7 +56,7 @@ public final class CatalogSystem {
         return null;
     }
 
-    //Searches books by title or ISBN (case-insensitive).
+    //Searches catalog items by title or ISBN (case-insensitive).
     public static List<LibraryItem> searchBooks(String query) {
         List<LibraryItem> results = new ArrayList<>();
         if (query == null || query.isBlank()) {
@@ -65,9 +65,6 @@ public final class CatalogSystem {
         String q = query.trim().toLowerCase();
         String qIsbn = InputValidation.normalizeIsbn(query).toLowerCase();
         for (LibraryItem item : allItems()) {
-            if (!"BOOK".equals(item.getSqlItemType())) {
-                continue;
-            }
             String title = item.getTitle() == null ? "" : item.getTitle().toLowerCase();
             String isbn = item.getIsbn() == null ? "" : item.getIsbn().toLowerCase();
             String isbnNorm = InputValidation.normalizeIsbn(item.getIsbn()).toLowerCase();

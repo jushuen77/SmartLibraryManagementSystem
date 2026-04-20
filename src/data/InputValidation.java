@@ -50,13 +50,12 @@ public final class InputValidation {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < raw.length(); i++) {
             char c = raw.charAt(i);
-            if (c == ' ' || c == '-') {
+            if (Character.isDigit(c)) {
+                sb.append(c);
                 continue;
             }
-            if (c == 'x') {
+            if (c == 'x' || c == 'X') {
                 sb.append('X');
-            } else {
-                sb.append(c);
             }
         }
         return sb.toString();

@@ -346,7 +346,7 @@ public class App {
                         ConsoleUi.pauseThenClear(scn);
                         break;
                     case 4:
-                        ConsoleUi.fieldPrompt("Book Title or ISBN (0 = cancel)");
+                        ConsoleUi.fieldPrompt("Title or ISBN (0 = cancel)");
                         String query = scn.nextLine().trim();
                         if ("0".equals(query)) {
                             ConsoleUi.info("Search cancelled.");
@@ -355,20 +355,21 @@ public class App {
                         }
                         List<LibraryItem> matches = CatalogSystem.searchBooks(query);
                         if (matches.isEmpty()) {
-                            ConsoleUi.info("No books matched that search.");
+                            ConsoleUi.info("No catalog items matched that search.");
                         } else {
-                            ConsoleUi.sectionTitle("Matching Books");
+                            ConsoleUi.sectionTitle("Matching Items");
                             printLibraryItemsTableWithStatus(matches);
 
-                            boolean hasOnLoan = false;
+                            boolean hasOnLoanBook = false;
                             for (LibraryItem item : matches) {
-                                if ("ON_LOAN".equals(item.getStatus().name())) {
-                                    hasOnLoan = true;
+                                if ("BOOK".equals(item.getSqlItemType())
+                                        && "ON_LOAN".equals(item.getStatus().name())) {
+                                    hasOnLoanBook = true;
                                     break;
                                 }
                             }
 
-                            if (hasOnLoan) {
+                            if (hasOnLoanBook) {
                                 ConsoleUi.fieldPrompt("Reserve a book that is on loan? (y/n, 0 = no)");
                                 String reserveChoice = scn.nextLine().trim();
                                 if (reserveChoice.equalsIgnoreCase("y")) {
