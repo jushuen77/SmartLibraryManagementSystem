@@ -1067,7 +1067,7 @@ public class Database {
         }
 
         String patronSql = "SELECT id FROM patrons WHERE LOWER(TRIM(email)) = LOWER(TRIM(?)) LIMIT 1";
-        String itemSql = "SELECT id FROM items WHERE item_type = 'BOOK' AND isbn = ? LIMIT 1";
+        String itemSql = "SELECT id FROM items WHERE item_type IN ('BOOK', 'JOURNAL', 'DIGITAL') AND isbn = ? LIMIT 1";   
 
         try (Connection conn = getConnection()) {
             Integer patronId = null;
