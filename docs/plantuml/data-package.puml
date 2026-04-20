@@ -1,0 +1,182 @@
+@startuml data_package_overview
+title data package — class overview
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "data" <<Folder>> {
+
+  class ConsoleUi <<utility>> {
+    {static} -DATE : DateTimeFormatter
+    {static} -INNER : int
+    {static} -TERMINAL_WIDTH : int
+    --
+    {static} +blank()
+    {static} +clearScreen()
+    {static} +pauseThenClear(scn : Scanner)
+    {static} +welcomeBanner()
+    {static} +menuStart(title : String)
+    {static} +menuOption(num : int, label : String)
+    {static} +menuEnd()
+    {static} +choicePrompt()
+    {static} +sectionTitle(title : String)
+    {static} +listItem(line : String)
+    {static} +numberedLine(n : int, line : String)
+    {static} +muted(line : String)
+    {static} +fieldPrompt(label : String)
+    {static} +ok(msg : String)
+    {static} +warn(msg : String)
+    {static} +info(msg : String)
+    {static} +pressEnterHint()
+    {static} +reportHeader(title : String)
+    {static} +readerPageBar(title : String, page : int, total : int)
+    {static} +readerControlsHint()
+    {static} +formatDate(date : LocalDate) : String
+  }
+
+  class InputReaders <<utility>> {
+    {static} +readMenuInt(scn : Scanner, min : int, max : int) : int
+    {static} +readIntInRange(scn : Scanner, min : int, max : int, repromptLabel : String) : int
+    {static} +readNonNegativeDouble(scn : Scanner, repromptLabel : String, max : double) : double
+    {static} +readIntInRangeOrZeroCancel(...) : Integer
+    {static} +readNonNegativeDoubleOrCancel(...) : Double
+    --
+    {static} -readNonNegativeDoubleCore(...) : Double
+    {static} -parseIntOrNull(line : String) : Integer
+  }
+
+  class InputValidation <<utility>> {
+    {static} +normalizeIsbn(raw : String) : String
+    {static} +validateIsbn(raw : String) : String
+    --
+    {static} -allDigits(s : String) : boolean
+    {static} -isbn10BodyOk(s : String) : boolean
+    {static} -isbn10ChecksumOk(s : String) : boolean
+    {static} -isbn13ChecksumOk(s : String) : boolean
+  }
+
+  class UserSession <<utility>> {
+    {static} -displayName : String
+    {static} -email : String
+    {static} -memberType : PatronType
+    --
+    {static} +set(name : String, canonicalEmail : String, type : PatronType)
+    {static} +clear()
+    {static} +isLoggedIn() : boolean
+    {static} +getDisplayName() : String
+    {static} +getEmail() : String
+    {static} +getMemberType() : PatronType
+  }
+
+  class Database <<utility>> {
+    {static} -url : String
+    {static} +STUDY_TIME_SLOTS : String[]
+  }
+}
+
+class PatronType <<enumeration>> {
+  STUDENT
+  FACULTY
+  PUBLIC
+}
+
+InputReaders ..> ConsoleUi : prints prompts / errors
+UserSession ..> PatronType : stores
+
+note right of Database
+  Facade over **users.db** (JDBC SQLite).
+  Depends on **library.model.*** and **library.SampleCatalog**
+  for seeding and row mapping.
+end note
+
+@enduml
+
+
+@startuml data_package_database_detail
+title data package — Database (public API + nested row types)
+skinparam classAttributeIconSize 0
+
+package "data" <<Folder>> {
+
+  class Database <<utility>> {
+    {static} +STUDY_TIME_SLOTS : String[]
+    {static} +createTable()
+    {static} +seedSampleDataIfEmpty()
+    {static} +syncPatronsFromUsersIfMissing()
+    {static} +backfillDigitalReaderContentFromSamples()
+    --
+    {static} +savePatron(patron : Patron) : boolean
+    {static} +saveItem(item : LibraryItem) : boolean
+    {static} +addUser(name, email, password) : boolean
+    {static} +findUserNameEmailIfValidCredentials(...) : String[]
+    {static} +ensurePatronForNewUser(name, email, memberType)
+    {static} +getPatronTypeForEmail(email : String) : PatronType
+    {static} +parseFlexibleDate(raw : String) : LocalDate
+    {static} +userExists(name, email) : boolean
+    {static} +isValidEmail(email : String) : boolean
+    {static} +getAllPatrons() : List~Patron~
+    {static} +getPatronByEmail(email : String) : Patron
+    {static} +addBookAcquisition(...) : boolean
+    {static} +removeDamagedBookByIsbn(isbn : String) : boolean
+    {static} +printLostBooks()
+    {static} +printOutstandingFines()
+    {static} +recordFinePayment(fineId : int, payment : double) : boolean
+    {static} +printInventoryAudit()
+    --
+    {static} +getAllBooks() : List~Book~
+    {static} +getAllJournals() : List~Journal~
+    {static} +getAllDigitalResources() : List~DigitalResource~
+    {static} +getAllCatalogItems() : List~LibraryItem~
+    --
+    {static} +borrowItem(patronId : int, itemId : int) : boolean
+    {static} +borrowBookByPatronEmailAndIsbn(email, isbn) : boolean
+    {static} +getAvailableBooks() : List~Book~
+    {static} +findAvailableBooksByTitleLike(query : String) : List~Book~
+    {static} +getActiveBookLoansForPatron(email : String) : List~ActiveBookLoan~
+    {static} +returnBookForPatronByItemId(email, itemId) : boolean
+    {static} +returnBookByPatronEmailAndIsbn(email, isbn) : boolean
+    {static} +returnItem(itemId : int) : boolean
+    {static} +addBookReservation(reservation : BookReservation) : boolean
+    --
+    {static} +isStudySlotValid(slotLabel : String) : boolean
+    {static} +getStudyRoomsList() : List~StudyRoomRow~
+    {static} +getStudyBookingsForPatron(email : String) : List~StudyBookingRow~
+    {static} +printStudySlotsForRoom(roomId : int, bookingDate : LocalDate)
+    {static} +bookStudyRoom(...) : boolean
+    {static} +printStudyBookingsForPatron(email : String)
+    {static} +cancelStudyBooking(bookingId : int, email : String) : boolean
+    --
+    {static} -mapBookFromResultSet(rs : ResultSet) : Book
+  }
+
+  class ActiveBookLoan <<DTO>> {
+    +itemId : int
+    +title : String
+    +isbn : String
+    +signedOutDate : LocalDate
+    +dueDate : LocalDate
+  }
+
+  class StudyRoomRow <<DTO>> {
+    +id : int
+    +name : String
+    +capacity : int
+  }
+
+  class StudyBookingRow <<DTO>> {
+    +id : int
+    +roomName : String
+    +bookingDate : LocalDate
+    +slotLabel : String
+  }
+}
+
+Database +-- ActiveBookLoan : «nested»
+Database +-- StudyRoomRow : «nested»
+Database +-- StudyBookingRow : «nested»
+
+note bottom of Database
+  Private helpers (connection, migrations, counts)
+  are omitted for readability — see **Database.java**.
+end note
+
+@enduml
