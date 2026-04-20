@@ -8,23 +8,23 @@ public final class InputReaders {
     }
 
     
-    //read menu input. if input wrong thing will prompt respective input error msg
+    // read menu input with user-friendly validation
     public static int readMenuInt(Scanner scn, int min, int max) {
         while (true) {
             String line = scn.nextLine().trim();
             if (line.isEmpty()) {
-                ConsoleUi.warn("You pressed Enter without a number. Type an option from " + min + " to " + max + ".");
+                ConsoleUi.warn("Input cannot be empty. Please enter a number from " + min + " to " + max + ".");
                 ConsoleUi.choicePrompt();
                 continue;
             }
             Integer v = parseIntOrNull(line);
             if (v == null) {
-                ConsoleUi.warn("That is not a whole number. Choose one of the options listed (" + min + "–" + max + ").");
+                ConsoleUi.warn("Please enter a whole number from " + min + " to " + max + ".");
                 ConsoleUi.choicePrompt();
                 continue;
             }
             if (v < min || v > max) {
-                ConsoleUi.warn("That number is not on this menu. Valid choices are " + min + " through " + max + ".");
+                ConsoleUi.warn("Out of range. Enter a number from " + min + " to " + max + ".");
                 ConsoleUi.choicePrompt();
                 continue;
             }
@@ -32,23 +32,23 @@ public final class InputReaders {
         }
     }
 
-        //keep on reading the input from user from the console unitl it matches between the min and max value and reutn elese retunr error msg.
+    // reads until user enters an integer between min and max
     public static int readIntInRange(Scanner scn, int min, int max, String repromptLabel) {
         while (true) {
             String line = scn.nextLine().trim();
             if (line.isEmpty()) {
-                ConsoleUi.warn("That line was empty. Enter a whole number between " + min + " and " + max + ".");
+                ConsoleUi.warn("Input cannot be empty. Enter a whole number from " + min + " to " + max + ".");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             Integer v = parseIntOrNull(line);
             if (v == null) {
-                ConsoleUi.warn("That is not a valid whole number. Use digits only, in the range " + min + "–" + max + ".");
+                ConsoleUi.warn("Please enter digits only (whole number) from " + min + " to " + max + ".");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             if (v < min || v > max) {
-                ConsoleUi.warn("That value is out of range. It must be between " + min + " and " + max + " (inclusive).");
+                ConsoleUi.warn("Out of range. Enter a number from " + min + " to " + max + ".");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
@@ -56,14 +56,14 @@ public final class InputReaders {
         }
     }
 
-    //read a input (positive float or double value) that the user enters. Can esc halway with entering 0 or cancel
+    // reads non-negative decimal amount, optionally allowing "cancel"
     private static Double readNonNegativeDoubleCore(Scanner scn, String repromptLabel, double max, boolean allowCancel) {
         while (true) {
             String line = scn.nextLine().trim();
             if (line.isEmpty()) {
                 ConsoleUi.warn(allowCancel
-                        ? "Enter a dollar amount, or type cancel to abort this step."
-                        : "Enter a dollar amount using digits, for example 1.50 or 10.");
+                        ? "Input cannot be empty. Enter an amount, or type cancel."
+                        : "Input cannot be empty. Enter an amount (example: 2.50).");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
@@ -75,21 +75,21 @@ public final class InputReaders {
                 v = Double.parseDouble(line);
             } catch (NumberFormatException e) {
                 ConsoleUi.warn(allowCancel
-                        ? "That is not a valid amount. Use digits (and one decimal point if needed), or type cancel to abort."
-                        : "That is not a valid amount. Use digits and at most one decimal point (example: 2.50).");
+                        ? "Invalid amount. Use digits (e.g. 2.50), or type cancel."
+                        : "Invalid amount. Use digits only (example: 2.50).");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             if (v < 0) {
                 ConsoleUi.warn(allowCancel
-                        ? "The amount cannot be negative. Enter a positive value or zero."
-                        : "The amount cannot be negative. Enter zero or a positive number.");
+                        ? "Amount cannot be negative. Enter 0 or more."
+                        : "Amount cannot be negative. Enter 0 or more.");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             if (v > max) {
                 ConsoleUi.warn(allowCancel
-                        ? "That amount is too high. Enter at most " + max + ", or type cancel to abort."
+                        ? "Amount is too high. Enter up to " + max + ", or type cancel."
                         : "That amount is too high. The maximum allowed here is " + max + ".");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
@@ -98,17 +98,17 @@ public final class InputReaders {
         }
     }
 
-    //to read the positive double/float value 有小数点的. then error msg if wrong input
+    // reads non-negative decimal value
     public static double readNonNegativeDouble(Scanner scn, String repromptLabel, double max) {
         return readNonNegativeDoubleCore(scn, repromptLabel, max, false);
     }
 
-    //this is for when user input half way they can enter 0 to esc or type "cancel" to exit de and also to check whther their input is in range or not
+    // reads integer in range, with 0 to cancel (returns null)
     public static Integer readIntInRangeOrZeroCancel(Scanner scn, int min, int max, String repromptLabel) {
         while (true) {
             String line = scn.nextLine().trim();
             if (line.isEmpty()) {
-                ConsoleUi.warn("Enter a number from " + min + " to " + max + ", or type 0 to cancel this step.");
+                ConsoleUi.warn("Input cannot be empty. Enter " + min + " to " + max + ", or 0 to cancel.");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
@@ -117,12 +117,12 @@ public final class InputReaders {
             }
             Integer v = parseIntOrNull(line);
             if (v == null) {
-                ConsoleUi.warn("That is not a whole number. Enter a value from " + min + " to " + max + ", or 0 to cancel.");
+                ConsoleUi.warn("Please enter a whole number from " + min + " to " + max + ", or 0 to cancel.");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }
             if (v < min || v > max) {
-                ConsoleUi.warn("That number is outside the allowed range (" + min + "–" + max + "). Try again, or enter 0 to cancel.");
+                ConsoleUi.warn("Out of range. Enter " + min + " to " + max + ", or 0 to cancel.");
                 ConsoleUi.fieldPrompt(repromptLabel);
                 continue;
             }

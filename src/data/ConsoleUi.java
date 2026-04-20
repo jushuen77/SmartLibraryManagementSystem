@@ -59,6 +59,12 @@ public final class ConsoleUi {
         return repeat(' ', pad);
     }
 
+    //left padding for free-form lines (tables/prompts/status) based on actual content width
+    private static String leftPadForWidth(int contentWidth) {
+        int pad = Math.max(0, (TERMINAL_WIDTH - Math.max(0, contentWidth)) / 2);
+        return repeat(' ', pad);
+    }
+
     // Pads/truncates one line inside a menu panel.
     private static String panelLine(String text) {
         String t = text == null ? "" : text;
@@ -127,52 +133,58 @@ public final class ConsoleUi {
 
     //Re-print the menu choice line after a bad or empty choice (same style as {@link #menuEnd}). 
     public static void choicePrompt() {
-        System.out.print(leftPad() + "  Choice: ");
+        System.out.print(leftPad() + "  Enter choice: ");
     }
 
     //Section title for list pages (books, journals, …). 
     public static void sectionTitle(String title) {
         blank();
-        String base = leftPad() + "  ";
-        System.out.println(base + "-- " + title + " --");
-        System.out.println(base + repeat('-', Math.min(56, title.length() + 8)));
+        String titleLine = "-- " + title + " --";
+        String underline = repeat('-', Math.min(56, title.length() + 8));
+        System.out.println(leftPadForWidth(titleLine.length()) + titleLine);
+        System.out.println(leftPadForWidth(underline.length()) + underline);
     }
 
     public static void listItem(String line) {
-        System.out.println(leftPad() + "  - " + line);
+        String text = "- " + line;
+        System.out.println(leftPadForWidth(text.length()) + text);
     }
 
     // Numbered row (menus, time slots) without a bullet. 
     public static void numberedLine(int n, String line) {
-        System.out.println(leftPad() + String.format("%2d.  %s", n, line));
+        String text = String.format("%2d.  %s", n, line);
+        System.out.println(leftPadForWidth(text.length()) + text);
     }
 
     public static void muted(String line) {
-        System.out.println(leftPad() + "    " + line);
+        String text = "  " + line;
+        System.out.println(leftPadForWidth(text.length()) + text);
     }
 
     //Single-line form field label (keep on same line as user input). 
     public static void fieldPrompt(String label) {
         String prompt = label + ": ";
-        System.out.print(leftPad() + "  " + prompt);
+        System.out.print(leftPadForWidth(prompt.length()) + prompt);
     }
 
     public static void ok(String msg) {
-        System.out.println(leftPad() + "  [OK] " + msg);
+        String text = "[OK] " + msg;
+        System.out.println(leftPadForWidth(text.length()) + text);
     }
 
     public static void warn(String msg) {
-        System.out.println(leftPad() + "  ! " + msg);
+        String text = "! " + msg;
+        System.out.println(leftPadForWidth(text.length()) + text);
     }
 
     public static void info(String msg) {
-        System.out.println(leftPad() + "  " + msg);
+        System.out.println(leftPadForWidth(msg.length()) + msg);
     }
 
     //pause between screens. 
     public static void pressEnterHint() {
         String prompt = "Press Enter to continue...";
-        System.out.println(leftPad() + "  " + prompt);
+        System.out.println(leftPadForWidth(prompt.length()) + prompt);
     }
 
     //Framed block title for database report blocks.
@@ -185,15 +197,17 @@ public final class ConsoleUi {
 
     //Reader / sub-screen divider. 
     public static void readerPageBar(String title, int page, int total) {
+        String bar = repeat('\u2500', 48);
+        String text = title + "  \u2014  page " + page + "/" + total;
         System.out.println();
-        System.out.println(leftPad() + repeat('\u2500', 48));
-        System.out.println(leftPad() + title + "  \u2014  page " + page + "/" + total);
-        System.out.println(leftPad() + repeat('\u2500', 48));
+        System.out.println(leftPadForWidth(bar.length()) + bar);
+        System.out.println(leftPadForWidth(text.length()) + text);
+        System.out.println(leftPadForWidth(bar.length()) + bar);
     }
 
     public static void readerControlsHint() {
         String prompt = "[n]ext  [p]rev  [q]uit: ";
-        System.out.print(leftPad() + "  " + prompt);
+        System.out.print(leftPadForWidth(prompt.length()) + prompt);
     }
 
     // Formats a date for display (dd/mm/yyyy). 

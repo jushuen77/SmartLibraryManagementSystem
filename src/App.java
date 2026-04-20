@@ -20,6 +20,8 @@
  */
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -109,7 +111,7 @@ public class App {
 
     // -------------------------------------------------------------------------
     // 2. Library portal (main menu → member login → this loop)
-    // Menu order: books, journals, digital, profile, catalog, e-reader, study rooms, log out, back.
+    // Menu order: profile, catalog, e-reader, study rooms, log out, back.
     // -------------------------------------------------------------------------
 
     private static void runLibraryPortal(Scanner scn) {
@@ -125,43 +127,31 @@ public class App {
                 showSignedInBanner = false;
             }
             ConsoleUi.menuStart("Library Portal");
-            ConsoleUi.menuOption(1, "View Books");
-            ConsoleUi.menuOption(2, "View Journals");
-            ConsoleUi.menuOption(3, "View Digital Resources");
-            ConsoleUi.menuOption(4, "My Profile");
-            ConsoleUi.menuOption(5, "Catalog");
-            ConsoleUi.menuOption(6, "E-book Reader");
-            ConsoleUi.menuOption(7, "Study Room Booking");
-            ConsoleUi.menuOption(8, "Log Out");
-            ConsoleUi.menuOption(9, "Back to Main Menu");
+            ConsoleUi.menuOption(1, "My Profile");
+            ConsoleUi.menuOption(2, "Catalog");
+            ConsoleUi.menuOption(3, "E-book Reader");
+            ConsoleUi.menuOption(4, "Study Room Booking");
+            ConsoleUi.menuOption(5, "Log Out");
+            ConsoleUi.menuOption(6, "Back to Main Menu");
             ConsoleUi.menuEnd();
-            int libraryChoice = InputReaders.readMenuInt(scn, 1, 9);
+            int libraryChoice = InputReaders.readMenuInt(scn, 1, 6);
             switch (libraryChoice) {
-                case 9:
+                case 6:
                     inLibraryMenu = false;
                     break;
                 case 1:
-                    showBooksPage(scn);
-                    break;
-                case 2:
-                    showJournalsPage(scn);
-                    break;
-                case 3:
-                    showDigitalResourcesPage(scn);
-                    break;
-                case 4:
                     showUserProfilePage(scn);
                     break;
-                case 5:
+                case 2:
                     showCatalogSystemPage(scn);
                     break;
-                case 6:
+                case 3:
                     showEbookReaderPage(scn);
                     break;
-                case 7:
+                case 4:
                     showStudyRoomBookingPage(scn);
                     break;
-                case 8:
+                case 5:
                     UserSession.clear();
                     ConsoleUi.ok("Logged out.");
                     inLibraryMenu = false;
@@ -208,46 +198,31 @@ public class App {
     }
 
     // -------------------------------------------------------------------------
-    // 4. Portal option 1 — View books
+    // 4. Catalog sub-option — View books
     // -------------------------------------------------------------------------
 
     private static void showBooksPage(Scanner scn) {
-        ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("Books");
-        for (Book b : Book.fetchAllFromDatabase()) {
-            ConsoleUi.listItem(b.getTitle() + " by " + b.getAuthor());
-        }
-        ConsoleUi.pauseThenClear(scn);
+        showItemsByGenreMenu(scn, "Books", Book.fetchAllFromDatabase());
     }
 
     // -------------------------------------------------------------------------
-    // 5. Portal option 2 — View journals
+    // 5. Catalog sub-option — View journals
     // -------------------------------------------------------------------------
 
     private static void showJournalsPage(Scanner scn) {
-        ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("Journals");
-        for (Journal j : Journal.fetchAllFromDatabase()) {
-            ConsoleUi.listItem(j.getTitle() + " by " + j.getAuthor());
-        }
-        ConsoleUi.pauseThenClear(scn);
+        showItemsByGenreMenu(scn, "Journals", Journal.fetchAllFromDatabase());
     }
 
     // -------------------------------------------------------------------------
-    // 6. Portal option 3 — View digital resources
+    // 6. Catalog sub-option — View digital resources
     // -------------------------------------------------------------------------
 
     private static void showDigitalResourcesPage(Scanner scn) {
-        ConsoleUi.clearScreen();
-        ConsoleUi.sectionTitle("Digital Resources");
-        for (DigitalResource d : DigitalResource.fetchAllFromDatabase()) {
-            ConsoleUi.listItem(d.getTitle() + " by " + d.getAuthor());
-        }
-        ConsoleUi.pauseThenClear(scn);
+        showItemsByGenreMenu(scn, "Digital Resources", DigitalResource.fetchAllFromDatabase());
     }
 
     // -------------------------------------------------------------------------
-    // 7. Portal option 5 — Catalog (browse / search / borrow / return)
+    // 7. Portal option 2 — Catalog (browse / search / borrow / return)
     // -------------------------------------------------------------------------
 
     private static void showCatalogSystemPage(Scanner scn) {
@@ -261,39 +236,118 @@ public class App {
         while (inCatalogMenu) {
             ConsoleUi.clearScreen();
             ConsoleUi.menuStart("Catalog");
-            ConsoleUi.menuOption(1, "Browse by Genre");
-            ConsoleUi.menuOption(2, "Browse by Author");
-            ConsoleUi.menuOption(3, "Search book Availability");
-            ConsoleUi.menuOption(4, "Borrow a Book");
-            ConsoleUi.menuOption(5, "Return a Book");
-            ConsoleUi.menuOption(6, "Back to Library Portal");
+            ConsoleUi.menuOption(1, "Browse by Item Types");
+            ConsoleUi.menuOption(2, "Browse by Genre");
+            ConsoleUi.menuOption(3, "Browse by Author");
+            ConsoleUi.menuOption(4, "Search book Availability");
+            ConsoleUi.menuOption(5, "Borrow a Book");
+            ConsoleUi.menuOption(6, "Return a Book");
+            ConsoleUi.menuOption(7, "Back to Library Portal");
             ConsoleUi.menuEnd();
 
-            int choice = InputReaders.readMenuInt(scn, 1, 6);
+            int choice = InputReaders.readMenuInt(scn, 1, 7);
             switch (choice) {
                     case 1:
-                        ConsoleUi.sectionTitle("By Genre");
-                        for (Map.Entry<String, List<LibraryItem>> entry : CatalogSystem.organizeByGenre().entrySet()) {
-                            ConsoleUi.muted(entry.getKey());
-                            for (LibraryItem item : entry.getValue()) {
-                                ConsoleUi.listItem(item.getTitle() + " | " + item.getAuthor() + " | ISBN: " + item.getIsbn());
-                            }
-                            ConsoleUi.blank();
+                        ConsoleUi.menuStart("Browse by Item Types");
+                        ConsoleUi.menuOption(1, "Books");
+                        ConsoleUi.menuOption(2, "Journals");
+                        ConsoleUi.menuOption(3, "Digital Resources");
+                        ConsoleUi.menuOption(4, "Back");
+                        ConsoleUi.menuEnd();
+                        int itemTypeChoice = InputReaders.readMenuInt(scn, 1, 4);
+                        switch (itemTypeChoice) {
+                            case 1:
+                                showBooksPage(scn);
+                                break;
+                            case 2:
+                                showJournalsPage(scn);
+                                break;
+                            case 3:
+                                showDigitalResourcesPage(scn);
+                                break;
+                            default:
+                                break;
                         }
-                        ConsoleUi.pauseThenClear(scn);
                         break;
                     case 2:
-                        ConsoleUi.sectionTitle("By Author");
-                        for (Map.Entry<String, List<LibraryItem>> entry : CatalogSystem.organizeByAuthor().entrySet()) {
-                            ConsoleUi.muted(entry.getKey());
-                            for (LibraryItem item : entry.getValue()) {
-                                ConsoleUi.listItem(item.getTitle() + " | " + item.getGenre() + " | ISBN: " + item.getIsbn());
+                        Map<String, List<LibraryItem>> byGenre = CatalogSystem.organizeByGenre();
+                        List<String> genreKeys = new ArrayList<>(byGenre.keySet());
+                        if (genreKeys.isEmpty()) {
+                            ConsoleUi.info("No catalog items to browse.");
+                            ConsoleUi.pauseThenClear(scn);
+                            break;
+                        }
+                        ConsoleUi.menuStart("Catalog Genres");
+                        ConsoleUi.menuOption(1, "All genres");
+                        for (int i = 0; i < genreKeys.size(); i++) {
+                            ConsoleUi.menuOption(i + 2, genreKeys.get(i));
+                        }
+                        int genreBackOption = genreKeys.size() + 2;
+                        ConsoleUi.menuOption(genreBackOption, "Back");
+                        ConsoleUi.menuEnd();
+                        int genrePick = InputReaders.readMenuInt(scn, 1, genreBackOption);
+                        if (genrePick == genreBackOption) {
+                            ConsoleUi.info("Genre browse cancelled.");
+                            ConsoleUi.pauseThenClear(scn);
+                            break;
+                        }
+                        ConsoleUi.sectionTitle("By Genre");
+                        if (genrePick == 1) {
+                            for (Map.Entry<String, List<LibraryItem>> entry : byGenre.entrySet()) {
+                                ConsoleUi.muted(entry.getKey());
+                                printLibraryItemsTable(entry.getValue());
+                                ConsoleUi.blank();
                             }
+                        } else {
+                            String selectedGenre = genreKeys.get(genrePick - 2);
+                            ConsoleUi.muted(selectedGenre);
+                            printLibraryItemsTable(byGenre.get(selectedGenre));
                             ConsoleUi.blank();
                         }
                         ConsoleUi.pauseThenClear(scn);
                         break;
                     case 3:
+                        Map<String, List<LibraryItem>> byAuthor = CatalogSystem.organizeByAuthor();
+                        if (byAuthor.isEmpty()) {
+                            ConsoleUi.info("No catalog items to browse.");
+                            ConsoleUi.pauseThenClear(scn);
+                            break;
+                        }
+                        ConsoleUi.fieldPrompt("Author name (or all, 0 = back)");
+                        String authorQuery = scn.nextLine().trim();
+                        if ("0".equals(authorQuery)) {
+                            ConsoleUi.info("Author browse cancelled.");
+                            ConsoleUi.pauseThenClear(scn);
+                            break;
+                        }
+                        ConsoleUi.sectionTitle("By Author");
+                        boolean showAllAuthors = authorQuery.equalsIgnoreCase("all") || authorQuery.isBlank();
+                        boolean foundAuthor = false;
+                        if (showAllAuthors) {
+                            for (Map.Entry<String, List<LibraryItem>> entry : byAuthor.entrySet()) {
+                                ConsoleUi.muted(entry.getKey());
+                                printLibraryItemsTable(entry.getValue());
+                                ConsoleUi.blank();
+                            }
+                        } else {
+                            for (Map.Entry<String, List<LibraryItem>> entry : byAuthor.entrySet()) {
+                                String authorName = entry.getKey();
+                                if (!authorName.equalsIgnoreCase(authorQuery)
+                                        && !authorName.toLowerCase().contains(authorQuery.toLowerCase())) {
+                                    continue;
+                                }
+                                foundAuthor = true;
+                                ConsoleUi.muted(authorName);
+                                printLibraryItemsTable(entry.getValue());
+                                ConsoleUi.blank();
+                            }
+                        }
+                        if (!showAllAuthors && !foundAuthor) {
+                            ConsoleUi.info("No author matched \"" + authorQuery + "\".");
+                        }
+                        ConsoleUi.pauseThenClear(scn);
+                        break;
+                    case 4:
                         ConsoleUi.fieldPrompt("Book Title or ISBN (0 = cancel)");
                         String query = scn.nextLine().trim();
                         if ("0".equals(query)) {
@@ -306,11 +360,7 @@ public class App {
                             ConsoleUi.info("No books matched that search.");
                         } else {
                             ConsoleUi.sectionTitle("Matching Books");
-                            for (LibraryItem item : matches) {
-                                ConsoleUi.listItem(item.getTitle()
-                                        + " | ISBN: " + item.getIsbn()
-                                        + " | Status: " + toUserStatus(item));
-                            }
+                            printLibraryItemsTableWithStatus(matches);
 
                             boolean hasOnLoan = false;
                             for (LibraryItem item : matches) {
@@ -360,7 +410,7 @@ public class App {
                         }
                         ConsoleUi.pauseThenClear(scn);
                         break;
-                    case 4:
+                    case 5:
                         ConsoleUi.info("Signed in as: " + UserSession.getDisplayName()
                                 + " (" + UserSession.getMemberType().toDisplayString() + ") <" + patronEmail + ">");
                         ConsoleUi.menuStart("Borrow by");
@@ -437,7 +487,7 @@ public class App {
                         }
                         ConsoleUi.pauseThenClear(scn);
                         break;
-                    case 5:
+                    case 6:
                         ConsoleUi.info("Returning as: " + UserSession.getDisplayName()
                                 + " (" + UserSession.getMemberType().toDisplayString() + ") <" + patronEmail + ">");
                         List<ActiveBookLoan> borrowed = Database.getActiveBookLoansForPatron(patronEmail);
@@ -484,7 +534,7 @@ public class App {
                         }
                         ConsoleUi.pauseThenClear(scn);
                         break;
-                    case 6:
+                    case 7:
                         inCatalogMenu = false;
                         break;
                     default:
@@ -772,6 +822,99 @@ public class App {
     // -------------------------------------------------------------------------
     // 12. Extra last min added methods 
     // -------------------------------------------------------------------------
+
+    // dropdown-like genre menu for books / journals / digital resources. 0 = show all.
+    private static <T extends LibraryItem> void showItemsByGenreMenu(Scanner scn, String screenTitle, List<T> items) {
+        ConsoleUi.clearScreen();
+        if (items == null || items.isEmpty()) {
+            ConsoleUi.sectionTitle(screenTitle);
+            ConsoleUi.info("No items found.");
+            ConsoleUi.pauseThenClear(scn);
+            return;
+        }
+
+        Map<String, List<T>> grouped = new LinkedHashMap<>();
+        for (T item : items) {
+            String genre = item.getGenre() == null || item.getGenre().isBlank() ? "Unknown Genre" : item.getGenre().trim();
+            grouped.computeIfAbsent(genre, k -> new ArrayList<>()).add(item);
+        }
+        List<String> genres = new ArrayList<>(grouped.keySet());
+
+        ConsoleUi.menuStart(screenTitle + " Genres");
+        ConsoleUi.menuOption(1, "All genres");
+        for (int i = 0; i < genres.size(); i++) {
+            ConsoleUi.menuOption(i + 2, genres.get(i));
+        }
+        int backOption = genres.size() + 2;
+        ConsoleUi.menuOption(backOption, "Back");
+        ConsoleUi.menuEnd();
+        int pick = InputReaders.readMenuInt(scn, 1, backOption);
+        if (pick == backOption) {
+            ConsoleUi.info("Genre browse cancelled.");
+            ConsoleUi.pauseThenClear(scn);
+            return;
+        }
+
+        ConsoleUi.clearScreen();
+        ConsoleUi.sectionTitle(screenTitle);
+        if (pick == 1) {
+            for (Map.Entry<String, List<T>> entry : grouped.entrySet()) {
+                ConsoleUi.muted(entry.getKey());
+                printLibraryItemsTable(entry.getValue());
+                ConsoleUi.blank();
+            }
+        } else {
+            String selectedGenre = genres.get(pick - 2);
+            ConsoleUi.muted(selectedGenre);
+            printLibraryItemsTable(grouped.get(selectedGenre));
+        }
+        ConsoleUi.pauseThenClear(scn);
+    }
+
+    // print items in a clean table: Title | Author | Genre | ISBN
+    private static void printLibraryItemsTable(List<? extends LibraryItem> items) {
+        String header = String.format("%-38s | %-22s | %-18s | %-13s", "Book Title", "Author Name", "Genre", "ISBN");
+        String line = "-".repeat(header.length());
+        ConsoleUi.listItem(header);
+        ConsoleUi.listItem(line);
+        for (LibraryItem item : items) {
+            String row = String.format("%-38s | %-22s | %-18s | %-13s",
+                    clip(item.getTitle(), 38),
+                    clip(item.getAuthor(), 22),
+                    clip(item.getGenre(), 18),
+                    clip(item.getIsbn(), 13));
+            ConsoleUi.listItem(row);
+        }
+    }
+
+    // same table + status column for search results
+    private static void printLibraryItemsTableWithStatus(List<? extends LibraryItem> items) {
+        String header = String.format("%-34s | %-20s | %-14s | %-13s | %-9s",
+                "Book Title", "Author Name", "Genre", "ISBN", "Status");
+        String line = "-".repeat(header.length());
+        ConsoleUi.listItem(header);
+        ConsoleUi.listItem(line);
+        for (LibraryItem item : items) {
+            String row = String.format("%-34s | %-20s | %-14s | %-13s | %-9s",
+                    clip(item.getTitle(), 34),
+                    clip(item.getAuthor(), 20),
+                    clip(item.getGenre(), 14),
+                    clip(item.getIsbn(), 13),
+                    clip(toUserStatus(item), 9));
+            ConsoleUi.listItem(row);
+        }
+    }
+
+    private static String clip(String value, int width) {
+        if (value == null || value.isBlank()) {
+            return "-";
+        }
+        String trimmed = value.trim();
+        if (trimmed.length() <= width) {
+            return trimmed;
+        }
+        return trimmed.substring(0, Math.max(1, width - 1)) + "…";
+    }
 
     // catalog / search screen: turn ugly enum text into normal words for user (ON_LOAN -> On Loan etc)
     private static String toUserStatus(LibraryItem item) {
