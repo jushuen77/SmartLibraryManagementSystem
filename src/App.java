@@ -30,9 +30,9 @@ import data.ConsoleUi;
 import data.Database;
 import data.InputReaders;
 import data.InputValidation;
-import data.Database.ActiveBookLoan;
-import data.Database.StudyBookingRow;
-import data.Database.StudyRoomRow;
+import data.ActiveBookLoan;
+import data.StudyBookingRow;
+import data.StudyRoomRow;
 import data.UserSession;
 import library.CatalogSystem;
 import library.model.Book;
@@ -46,8 +46,6 @@ public class App {
     // -------------------------------------------------------------------------
     // Small helpers (used everywhere)
     // -------------------------------------------------------------------------
-
-    private static final int EBOOK_READER_LINES_PER_PAGE = 14;
 
     // -------------------------------------------------------------------------
     // 1. Program entry
@@ -580,14 +578,10 @@ public class App {
                 return;
             }
             String[] lines = content.split("\\R");
-            int totalPages = Math.max(1, (lines.length + EBOOK_READER_LINES_PER_PAGE - 1) / EBOOK_READER_LINES_PER_PAGE);
-            int page = 0;
             boolean reading = true;
             while (reading) {
-                ConsoleUi.readerPageBar(book.getTitle(), page + 1, totalPages);
-                int start = page * EBOOK_READER_LINES_PER_PAGE;
-                int end = Math.min(start + EBOOK_READER_LINES_PER_PAGE, lines.length);
-                for (int i = start; i < end; i++) {
+                ConsoleUi.readerPageBar(book.getTitle(), 1, 1);
+                for (int i = 0; i < lines.length; i++) {
                     System.out.println("  " + lines[i]);
                 }
                 ConsoleUi.readerControlsHint();
@@ -595,10 +589,8 @@ public class App {
                 if (cmd.equals("q")) {
                     reading = false;
                     ConsoleUi.clearScreen();
-                } else if (cmd.equals("n") && page < totalPages - 1) {
-                    page++;
-                } else if (cmd.equals("p") && page > 0) {
-                    page--;
+                } else {
+                    ConsoleUi.warn("Type q to quit the reader.");
                 }
             }
         } catch (Exception e) {

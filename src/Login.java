@@ -9,9 +9,6 @@ import data.UserSession;
 
 public final class Login {
 
-    private Login() {
-    }
-
     public static boolean prompt(Scanner scn) {
         ConsoleUi.sectionTitle("Library member login");
         ConsoleUi.info("Students, faculty, and public members use this sign-in.");

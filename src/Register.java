@@ -11,9 +11,6 @@ import library.model.PatronType;
 // Sign-up for library members (student, faculty, or public). Creates both a login and a patron record.
 public final class Register {
 
-    private Register() {
-    }
-
     public static void prompt(Scanner scn) {
         ConsoleUi.sectionTitle("Register (library member)");
         ConsoleUi.muted("Enter 0 as name to cancel registration before creating an account.");

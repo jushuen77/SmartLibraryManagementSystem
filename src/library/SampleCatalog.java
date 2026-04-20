@@ -26,87 +26,87 @@ public final class SampleCatalog {
 
     public static List<Book> sampleBooks() {
         List<Book> list = new ArrayList<>();
-        Book hp1 = new Book("Harry Potter and the Philosopher's Stone", "J.K. Rowling", "9780747532699", "Fantasy");
-        hp1.setLoanPolicy(14, 3, 1.00);
-        list.add(hp1);
-        Book hp2 = new Book("Harry Potter and the Chamber of Secrets", "J.K. Rowling", "9780439064873", "Fantasy");
-        hp2.setLoanPolicy(14, 3, 1.00);
-        list.add(hp2);
-        Book hp4 = new Book("Harry Potter and the Goblet of Fire", "J.K. Rowling", "9780439139601", "Fantasy");
-        hp4.setLoanPolicy(14, 2, 1.25);
-        list.add(hp4);
-        Book hobbit = new Book("The Hobbit", "J.R.R. Tolkien", "9780547928227", "Fantasy");
-        hobbit.setLoanPolicy(21, 4, 0.75);
-        list.add(hobbit);
-        Book lotr = new Book("The Lord of the Rings", "J.R.R. Tolkien", "9780544003415", "Fantasy");
-        lotr.setLoanPolicy(21, 2, 1.50);
-        list.add(lotr);
-        Book nineteen84 = new Book("1984", "George Orwell", "9780451524935", "Dystopian fiction");
-        nineteen84.setLoanPolicy(10, 3, 1.25);
-        list.add(nineteen84);
-        Book dune = new Book("Dune", "Frank Herbert", "9780441172719", "Science fiction");
-        dune.setLoanPolicy(14, 2, 1.50);
-        list.add(dune);
-        Book pride = new Book("Pride and Prejudice", "Jane Austen", "9780141439518", "Classic fiction");
-        pride.setLoanPolicy(28, 5, 0.50);
-        list.add(pride);
+        Book alchemist = new Book("The Alchemist", "Paulo Coelho", "9780061122415", "Fiction");
+        alchemist.setLoanPolicy(14, 3, 1.00);
+        list.add(alchemist);
+        Book sapiens = new Book("Sapiens", "Yuval Noah Harari", "9780062316097", "History");
+        sapiens.setLoanPolicy(21, 3, 1.25);
+        list.add(sapiens);
+        Book hamlet = new Book("Hamlet", "William Shakespeare", "9780743477123", "Classic");
+        hamlet.setLoanPolicy(14, 2, 0.75);
+        list.add(hamlet);
+        Book beloved = new Book("Beloved", "Toni Morrison", "9781400033416", "Classic fiction");
+        beloved.setLoanPolicy(21, 3, 1.00);
+        list.add(beloved);
+        Book fahrenheit451 = new Book("Fahrenheit 451", "Ray Bradbury", "9781451673319", "Dystopian fiction");
+        fahrenheit451.setLoanPolicy(10, 3, 1.25);
+        list.add(fahrenheit451);
+        Book frankenstein = new Book("Frankenstein", "Mary Shelley", "9780486282114", "Gothic fiction");
+        frankenstein.setLoanPolicy(14, 2, 1.00);
+        list.add(frankenstein);
+        Book dracula = new Book("Dracula", "Bram Stoker", "9780486411095", "Horror");
+        dracula.setLoanPolicy(14, 2, 1.00);
+        list.add(dracula);
+        Book emma = new Book("Emma", "Jane Austen", "9780141439587", "Classic fiction");
+        emma.setLoanPolicy(28, 4, 0.50);
+        list.add(emma);
         return list;
     }
 
     public static List<Journal> sampleJournals() {
         List<Journal> list = new ArrayList<>();
-        Journal nature = new Journal("Nature — Vol. 632, Quantum computing focus", "Nature Publishing Group", "9789000000012", "Science");
+        Journal nature = new Journal("Nature Vol. 632", "Nature Publishing Group", "9789000000012", "Science");
         nature.setLoanPolicy(7, 2, 1.50);
         list.add(nature);
-        Journal ieeeSw = new Journal("IEEE Software — Secure coding practices", "IEEE Computer Society", "9789000000029", "Technology");
+        Journal ieeeSw = new Journal("IEEE Software", "IEEE Computer Society", "9789000000029", "Technology");
         ieeeSw.setLoanPolicy(14, 3, 1.25);
         list.add(ieeeSw);
-        Journal lancet = new Journal("The Lancet — Public health and policy review", "Elsevier", "9789000000036", "Medicine");
+        Journal lancet = new Journal("The Lancet", "Elsevier", "9789000000036", "Medicine");
         lancet.setLoanPolicy(7, 2, 2.00);
         list.add(lancet);
-        Journal jmlr = new Journal("Journal of Machine Learning Research — Vol. 25", "JMLR Inc.", "9789000000043", "Computer science");
+        Journal jmlr = new Journal("JMLR Vol. 25", "JMLR Inc.", "9789000000043", "Computer science");
         jmlr.setLoanPolicy(14, 2, 1.00);
         list.add(jmlr);
-        Journal acmCsur = new Journal("ACM Computing Surveys — Human–computer interaction", "ACM", "9789000000050", "Computer science");
+        Journal acmCsur = new Journal("ACM Computing Surveys", "ACM", "9789000000050", "Computer science");
         acmCsur.setLoanPolicy(14, 2, 1.25);
         list.add(acmCsur);
-        Journal science = new Journal("Science — Research articles digest", "AAAS", "9789000000067", "Science");
+        Journal science = new Journal("Science Digest", "AAAS", "9789000000067", "Science");
         science.setLoanPolicy(7, 2, 1.75);
         list.add(science);
-        Journal hbr = new Journal("Harvard Business Review — Strategy & leadership", "Harvard Business Publishing", "9789000000074", "Business");
+        Journal hbr = new Journal("Harvard Business Review", "Harvard Business Publishing", "9789000000074", "Business");
         hbr.setLoanPolicy(21, 4, 1.00);
         list.add(hbr);
-        Journal psych = new Journal("Psychological Review — Cognitive science monograph", "APA", "9789000000081", "Psychology");
+        Journal psych = new Journal("Psychological Review", "APA", "9789000000081", "Psychology");
         psych.setLoanPolicy(14, 3, 1.00);
         list.add(psych);
-        Journal arch = new Journal("Architectural Review — Sustainable design", "EMAP Publishing", "9789000000098", "Architecture");
+        Journal arch = new Journal("Architectural Review", "EMAP Publishing", "9789000000098", "Architecture");
         arch.setLoanPolicy(21, 3, 0.75);
         list.add(arch);
-        Journal chem = new Journal("Journal of the American Chemical Society — Highlights", "ACS Publications", "9789000000104", "Chemistry");
+        Journal chem = new Journal("JACS Highlights", "ACS Publications", "9789000000104", "Chemistry");
         chem.setLoanPolicy(7, 2, 1.50);
         list.add(chem);
-        Journal hist = new Journal("Past & Present — Social history quarterly", "Oxford University Press", "9789000000111", "History");
+        Journal hist = new Journal("Past & Present", "Oxford University Press", "9789000000111", "History");
         hist.setLoanPolicy(28, 4, 0.50);
         list.add(hist);
-        Journal nejm = new Journal("The New England Journal of Medicine — Clinical updates", "Massachusetts Medical Society", "9789000000128", "Medicine");
+        Journal nejm = new Journal("NEJM Clinical Updates", "Massachusetts Medical Society", "9789000000128", "Medicine");
         nejm.setLoanPolicy(7, 2, 2.25);
         list.add(nejm);
-        Journal bmj = new Journal("The BMJ — Evidence-based practice", "BMJ Publishing Group", "9789000000135", "Medicine");
+        Journal bmj = new Journal("The BMJ", "BMJ Publishing Group", "9789000000135", "Medicine");
         bmj.setLoanPolicy(14, 3, 1.50);
         list.add(bmj);
-        Journal cacm = new Journal("Communications of the ACM — Software engineering trends", "ACM", "9789000000142", "Computer science");
+        Journal cacm = new Journal("Communications of the ACM", "ACM", "9789000000142", "Computer science");
         cacm.setLoanPolicy(14, 3, 1.00);
         list.add(cacm);
-        Journal prl = new Journal("Physical Review Letters — Condensed matter highlights", "American Physical Society", "0031-9007", "Physics");
+        Journal prl = new Journal("Physical Review Letters", "American Physical Society", "9789000000159", "Physics");
         prl.setLoanPolicy(7, 2, 1.25);
         list.add(prl);
-        Journal ai = new Journal("Artificial Intelligence — Planning & reasoning survey", "Elsevier", "9789000000166", "Computer science");
+        Journal ai = new Journal("Artificial Intelligence", "Elsevier", "9789000000166", "Computer science");
         ai.setLoanPolicy(21, 3, 1.00);
         list.add(ai);
-        Journal econometrica = new Journal("Econometrica — Econometrics monograph", "Wiley", "9789000000173", "Economics");
+        Journal econometrica = new Journal("Econometrica", "Wiley", "9789000000173", "Economics");
         econometrica.setLoanPolicy(21, 4, 1.00);
         list.add(econometrica);
-        Journal foreignAffairs = new Journal("Foreign Affairs — International relations review", "Council on Foreign Relations", "0015-7120", "Political science");
+        Journal foreignAffairs = new Journal("Foreign Affairs", "Council on Foreign Relations", "9789000000180", "Political science");
         foreignAffairs.setLoanPolicy(28, 4, 0.75);
         list.add(foreignAffairs);
         return list;
@@ -115,11 +115,11 @@ public final class SampleCatalog {
     public static List<DigitalResource> sampleDigitalResources() {
         List<DigitalResource> list = new ArrayList<>();
         DigitalResource hp3 = new DigitalResource(
-                "Harry Potter and the Prisoner of Azkaban (e-book)", "J.K. Rowling", "9781781100509", "Fantasy");
+                "HP: Azkaban (e-book)", "J.K. Rowling", "9781781100509", "Fantasy");
         hp3.setReaderContent(sampleExcerptHpAzkaban());
         list.add(hp3);
         DigitalResource hp5 = new DigitalResource(
-                "Harry Potter and the Order of the Phoenix (e-book)", "J.K. Rowling", "9781781101353", "Fantasy");
+                "HP: Phoenix (e-book)", "J.K. Rowling", "9781781101353", "Fantasy");
         hp5.setReaderContent(sampleExcerptHpPhoenix());
         list.add(hp5);
         DigitalResource phm = new DigitalResource("Project Hail Mary", "Andy Weir", "9780593135204", "Science fiction");
@@ -143,7 +143,7 @@ public final class SampleCatalog {
 
                 He missed the castle, with its secret passageways and ghosts, his classes, mail arriving by owl, eating in the Great Hall, sleeping in his four-poster bed in the tower dormitory, visiting the gamekeeper, Hagrid, in his cabin next to the Forbidden Forest...
 
-                [Integrated reader — full text would load from library digital lending.]
+                [Integrated reader - full text would load from library digital lending.]
                 """.strip();
     }
 
@@ -154,7 +154,7 @@ public final class SampleCatalog {
 
                 Harry Potter was lying flat on his back, breathing hard as though he had been running. He had awoken with a start, his scar prickling...
 
-                [Integrated reader — resume reading syncs across devices in a full deployment.]
+                [Integrated reader - resume reading syncs across devices in a full deployment.]
                 """.strip();
     }
 
@@ -169,7 +169,7 @@ public final class SampleCatalog {
 
                 Six days ago I was in space. Now I'm alone on a ship I don't know how to fly, with no crew, and dwindling supplies...
 
-                [Integrated reader — DRM and loan expiry handled by the library platform.]
+                [Integrated reader - DRM and loan expiry handled by the library platform.]
                 """.strip();
     }
 
@@ -180,7 +180,7 @@ public final class SampleCatalog {
 
                 The single responsibility principle states that a class should have only one reason to change...
 
-                [Integrated reader — diagrams and code samples render in the full viewer.]
+                [Integrated reader -  diagrams and code samples render in the full viewer.]
                 """.strip();
     }
 
@@ -191,7 +191,7 @@ public final class SampleCatalog {
 
                 Consider static factory methods instead of constructors when you need more flexible object creation...
 
-                [Integrated reader — search and annotations supported in production.]
+                [Integrated reader -  search and annotations supported in production.]
                 """.strip();
     }
 }

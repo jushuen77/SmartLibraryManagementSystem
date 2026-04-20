@@ -10,9 +10,6 @@ public final class UserSession {
     private static String email;
     private static PatronType memberType;
 
-    private UserSession() {
-    }
-
     public static void set(String name, String canonicalEmail, PatronType type) {
         displayName = name;
         email = canonicalEmail;

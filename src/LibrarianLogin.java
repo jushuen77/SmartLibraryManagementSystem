@@ -10,10 +10,7 @@ public final class LibrarianLogin {
 
     private static final String STAFF_USERNAME = "librarian";
     private static final String STAFF_PASSWORD = "lib123";
-
-    private LibrarianLogin() {
-    }
-
+    
     public static boolean prompt(Scanner scn) {
         ConsoleUi.sectionTitle("Staff login");
         ConsoleUi.muted("Enter 0 as username to cancel.");

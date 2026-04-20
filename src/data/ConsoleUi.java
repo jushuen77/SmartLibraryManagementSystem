@@ -205,7 +205,7 @@ public final class ConsoleUi {
     }
 
     public static void readerControlsHint() {
-        String prompt = "[n]ext  [p]rev  [q]uit: ";
+        String prompt = "[q]uit: ";
         System.out.print(leftPadForWidth(prompt.length()) + prompt);
     }
 

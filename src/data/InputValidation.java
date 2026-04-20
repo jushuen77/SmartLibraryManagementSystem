@@ -11,9 +11,7 @@ public final class InputValidation {
     public static final int PASSWORD_MIN_LENGTH = 8;
     public static final int PASSWORD_MAX_LENGTH = 72;
 
-    /**
-     * @return {@code null} if the password is acceptable, otherwise a message for {@code ConsoleUi.warn}.
-     */
+    //return null if password is valid else reutnr message 
     public static String validatePassword(String raw) {
         if (raw == null || raw.isBlank()) {
             return "Password cannot be empty.";
@@ -146,7 +144,7 @@ public final class InputValidation {
     public static String validateStudyBookingDate(String raw) {
         LocalDate parsed = Database.parseFlexibleDate(raw);
         if (parsed == null) {
-            return "That date was not understood. Use day/month/year with slashes, for example 17/04/2026.";
+            return "That date is invalid. Use day/month/year. For example 17/04/2026.";
         }
         if (parsed.isBefore(LocalDate.now())) {
             return "Cannot book a date in the past.";

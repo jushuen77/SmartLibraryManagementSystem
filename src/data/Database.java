@@ -1153,23 +1153,6 @@ public class Database {
         return books;
     }
 
-    //uses a list so it will show like here are our current load and choose one to return instead of diggint through the sql database again. Waste RAM bro
-    public static final class ActiveBookLoan {
-        public final int itemId;
-        public final String title;
-        public final String isbn;
-        public final LocalDate signedOutDate;
-        public final LocalDate dueDate;
-
-        public ActiveBookLoan(int itemId, String title, String isbn, LocalDate signedOutDate, LocalDate dueDate) {
-            this.itemId = itemId;
-            this.title = title;
-            this.isbn = isbn;
-            this.signedOutDate = signedOutDate;
-            this.dueDate = dueDate;
-        }
-    }
-
     //show the books that the user is still holding on to. Then sorted by dude date soonest. 
     public static List<ActiveBookLoan> getActiveBookLoansForPatron(String patronEmail) {
         List<ActiveBookLoan> out = new ArrayList<>();
@@ -1407,19 +1390,6 @@ public class Database {
         return false;
     }
 
-    //Room row for numbered pick lists in the console UI
-    public static final class StudyRoomRow {
-        public final int id;
-        public final String name;
-        public final int capacity;
-
-        public StudyRoomRow(int id, String name, int capacity) {
-            this.id = id;
-            this.name = name;
-            this.capacity = capacity;
-        }
-    }
-
     public static List<StudyRoomRow> getStudyRoomsList() {
         List<StudyRoomRow> out = new ArrayList<>();
         String sql = "SELECT id, name, capacity FROM study_rooms ORDER BY id";
@@ -1433,21 +1403,6 @@ public class Database {
             e.printStackTrace();
         }
         return out;
-    }
-
-    //AGAIN BASICALLY pacakges one study room reservaion tgt for easier display
-    public static final class StudyBookingRow {
-        public final int id;
-        public final String roomName;
-        public final LocalDate bookingDate;
-        public final String slotLabel;
-
-        public StudyBookingRow(int id, String roomName, LocalDate bookingDate, String slotLabel) {
-            this.id = id;
-            this.roomName = roomName;
-            this.bookingDate = bookingDate;
-            this.slotLabel = slotLabel;
-        }
     }
 
     //loads the top method into a list then return it. again basically its like show my study room reservations then a the list will be printed out
