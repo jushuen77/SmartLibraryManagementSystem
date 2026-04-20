@@ -1454,7 +1454,7 @@ public class Database {
             e.printStackTrace();
             return;
         }
-        ConsoleUi.reportHeader("Room #" + roomId + "  —  " + ConsoleUi.formatDate(bookingDate));
+        ConsoleUi.reportHeader("Room #" + roomId + "  -   " + ConsoleUi.formatDate(bookingDate));
         for (int i = 0; i < STUDY_TIME_SLOTS.length; i++) {
             String slot = STUDY_TIME_SLOTS[i];
             boolean booked = taken.contains(slot);

@@ -73,7 +73,7 @@ public final class Register {
 
         PatronType memberType = PatronType.PUBLIC;
         ConsoleUi.menuStart("Member type");
-        ConsoleUi.menuOption(0, "Cancel — do not create account");
+        ConsoleUi.menuOption(0, "Cancel - do not create account");
         ConsoleUi.menuOption(1, "Student");
         ConsoleUi.menuOption(2, "Faculty");
         ConsoleUi.menuOption(3, "Public member");
