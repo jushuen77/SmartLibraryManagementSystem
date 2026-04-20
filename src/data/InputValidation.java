@@ -1,9 +1,45 @@
 package data;
 
-//ISBN checks for books (ISBN-10 or ISBN-13). Hyphens and spaces are ignored.
+// ISBN checks for books; password rules for registration.
 public final class InputValidation {
 
     private InputValidation() {
+    }
+
+    public static final int PASSWORD_MIN_LENGTH = 8;
+    public static final int PASSWORD_MAX_LENGTH = 72;
+
+    /**
+     * @return {@code null} if the password is acceptable, otherwise a message for {@code ConsoleUi.warn}.
+     */
+    public static String validatePassword(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return "Password cannot be empty.";
+        }
+        if (raw.length() < PASSWORD_MIN_LENGTH) {
+            return "Password must be at least " + PASSWORD_MIN_LENGTH + " characters.";
+        }
+        if (raw.length() > PASSWORD_MAX_LENGTH) {
+            return "Password must be at most " + PASSWORD_MAX_LENGTH + " characters.";
+        }
+        boolean hasLetter = false;
+        boolean hasDigit = false;
+        for (int i = 0; i < raw.length(); i++) {
+            char c = raw.charAt(i);
+            if (Character.isLetter(c)) {
+                hasLetter = true;
+            }
+            if (Character.isDigit(c)) {
+                hasDigit = true;
+            }
+        }
+        if (!hasLetter) {
+            return "Password must include at least one letter (A–Z or a–z).";
+        }
+        if (!hasDigit) {
+            return "Password must include at least one digit (0–9).";
+        }
+        return null;
     }
 
     //Removes spaces and hyphens; uppercases trailing X for ISBN-10. 

@@ -4,7 +4,6 @@ import java.util.List;
 
 import data.Database;
 
-/** Journal item ({@code item_type = JOURNAL}) in the catalog. */
 public class Journal extends LibraryItem {
 
     public Journal(String title, String author, String isbn, String genre) {
@@ -33,7 +32,7 @@ public class Journal extends LibraryItem {
         return "JOURNAL";
     }
 
-    /** Convenience loader so this class can request its DB records. */
+    //Convenience loader so this class can request its DB records. the list thing again for easy output
     public static List<Journal> fetchAllFromDatabase() {
         return Database.getAllJournals();
     }

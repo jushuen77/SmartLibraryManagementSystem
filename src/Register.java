@@ -4,6 +4,7 @@ import java.util.Scanner;
 import data.ConsoleUi;
 import data.Database;
 import data.InputReaders;
+import data.InputValidation;
 import library.model.PatronType;
 
 
@@ -22,38 +23,51 @@ public final class Register {
             ConsoleUi.info("Registration cancelled.");
             return;
         }
-        ConsoleUi.fieldPrompt("Email (0 = cancel)");
-        String email = scn.nextLine();
-        if ("0".equals(email.trim())) {
-            ConsoleUi.info("Registration cancelled.");
-            return;
+        String email;
+        while (true) {
+            ConsoleUi.fieldPrompt("Email (0 = cancel)");
+            email = scn.nextLine();
+            if ("0".equals(email.trim())) {
+                ConsoleUi.info("Registration cancelled.");
+                return;
+            }
+            email = email.trim();
+            if (!Database.isValidEmail(email)) {
+                ConsoleUi.warn("That email does not look valid. Use name + @ + provider (example: you@school.edu).");
+                ConsoleUi.muted("Format: letters or digits, then @, then domain with a dot (e.g. .com).");
+                continue;
+            }
+            break;
         }
-        ConsoleUi.fieldPrompt("Password (0 = cancel)");
-        String password = scn.nextLine();
-        if ("0".equals(password.trim())) {
-            ConsoleUi.info("Registration cancelled.");
-            return;
-        }
-        ConsoleUi.fieldPrompt("Confirm password (0 = cancel)");
-        String conPassword = scn.nextLine();
-        if ("0".equals(conPassword.trim())) {
-            ConsoleUi.info("Registration cancelled.");
-            return;
+        String password;
+        String conPassword;
+        while (true) {
+            ConsoleUi.fieldPrompt("Password (0 = cancel)");
+            password = scn.nextLine();
+            if ("0".equals(password.trim())) {
+                ConsoleUi.info("Registration cancelled.");
+                return;
+            }
+            String pwdErr = InputValidation.validatePassword(password);
+            if (pwdErr != null) {
+                ConsoleUi.warn(pwdErr);
+                ConsoleUi.muted("Rules: " + InputValidation.PASSWORD_MIN_LENGTH + " to " + InputValidation.PASSWORD_MAX_LENGTH
+                        + " characters, at least one letter and one digit.");
+                continue;
+            }
+            ConsoleUi.fieldPrompt("Confirm password (0 = cancel)");
+            conPassword = scn.nextLine();
+            if ("0".equals(conPassword.trim())) {
+                ConsoleUi.info("Registration cancelled.");
+                return;
+            }
+            if (!password.equals(conPassword)) {
+                ConsoleUi.warn("Password and confirmation do not match. Enter the same password twice.");
+                continue;
+            }
+            break;
         }
 
-        if (!password.equals(conPassword)) {
-            ConsoleUi.warn("The password and confirmation do not match. Re-enter them so both fields are identical.");
-            ConsoleUi.pauseThenClear(scn);
-            return;
-        }
-
-        if (!Database.isValidEmail(email)) {
-            ConsoleUi.warn("That email does not look valid. Use the form name@provider (for example you@school.edu).");
-            System.out.printf("\t\t\tEmail format is <name> + @ + your email provider! ");
-            System.out.println();
-            ConsoleUi.pauseThenClear(scn);
-            return;
-        }
         if (Database.userExists(name, email)) {
             ConsoleUi.warn("An account already uses that name or email. Sign in instead, or use a different email.");
             ConsoleUi.pauseThenClear(scn);

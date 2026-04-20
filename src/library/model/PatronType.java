@@ -5,7 +5,7 @@ public enum PatronType {
     FACULTY,
     PUBLIC;
 
-    /** Short label for menus and lists. */
+    //Short label for menus and lists
     public String toDisplayString() {
         return switch (this) {
             case STUDENT -> "Student";
@@ -14,7 +14,7 @@ public enum PatronType {
         };
     }
 
-    /** Max physical books this member may have checked out at once. */
+    // Max physical books this member may have checked out at once.
     public int maxConcurrentLoans() {
         return switch (this) {
             case STUDENT -> 10;
@@ -23,10 +23,7 @@ public enum PatronType {
         };
     }
 
-    /**
-     * Effective loan length in days: combines the catalog value on the book with rules for students,
-     * faculty, and public members (assignment: different types get different loan durations).
-     */
+    //basically takes the book catalog loan length and then adjust it to the member type length. so they will get diffrent loan duration
     public int effectiveLoanDays(int bookLoanDays) {
         int base = bookLoanDays < 1 ? 14 : bookLoanDays;
         return switch (this) {

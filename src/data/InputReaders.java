@@ -2,7 +2,6 @@ package data;
 
 import java.util.Scanner;
 
-/** Line-based numeric input so empty or non-numeric choices show clear errors. */
 public final class InputReaders {
 
     private InputReaders() {
@@ -57,7 +56,7 @@ public final class InputReaders {
         }
     }
 
-    /** @param allowCancel if true, line {@code cancel} (any case) returns {@code null} */
+    //read a input (positive float or double value) that the user enters. Can esc halway with entering 0 or cancel
     private static Double readNonNegativeDoubleCore(Scanner scn, String repromptLabel, double max, boolean allowCancel) {
         while (true) {
             String line = scn.nextLine().trim();

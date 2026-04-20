@@ -1,6 +1,5 @@
 package library.model;
 
-/** Reservation request for a borrowed book. */
 public class BookReservation {
 
     private int id;

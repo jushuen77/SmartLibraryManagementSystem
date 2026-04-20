@@ -10,10 +10,7 @@ import data.Database;
 import data.InputValidation;
 import library.model.LibraryItem;
 
-/*
- * Thin helper over Database.getAllCatalogItems() — groups/sorts in memory for the browse + search menus.
- * No SQL here; data comes from Database.getAllCatalogItems() so catalog queries stay in one place.
- */
+//help databse to see what the user need . Liek example if user use iew books then database will who avialable books
 public final class CatalogSystem {
 
     private CatalogSystem() {
@@ -59,7 +56,7 @@ public final class CatalogSystem {
         return null;
     }
 
-    /** Searches books by title or ISBN (case-insensitive). */
+    //Searches books by title or ISBN (case-insensitive).
     public static List<LibraryItem> searchBooks(String query) {
         List<LibraryItem> results = new ArrayList<>();
         if (query == null || query.isBlank()) {

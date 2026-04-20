@@ -3,18 +3,15 @@ package library.model;
 import java.util.List;
 
 import data.Database;
-/*
- * Anything in sqlite with item_type = DIGITAL ends up as one of these.
- * reader_content is optional plain text for the built-in "e-book reader" screens in App.
- */
+
+
 public class DigitalResource extends LibraryItem {
 
-    /** Excerpt / chapter stub we show in the console reader — null means "no text loaded yet" */
     private String readerContent;
 
     public DigitalResource(String title, String author, String isbn, String genre) {
         super(title, author, isbn, genre);
-        this.readerContent = null;
+        this.readerContent = null;//null means no text loaded yet
     }
 
     public DigitalResource(
@@ -58,7 +55,7 @@ public class DigitalResource extends LibraryItem {
         this.readerContent = readerContent;
     }
 
-    /** Convenience loader so this class can request its DB records. */
+    //Convenience loader so this class can request its DB records. same thing again for easy output
     public static List<DigitalResource> fetchAllFromDatabase() {
         return Database.getAllDigitalResources();
     }

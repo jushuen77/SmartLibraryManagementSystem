@@ -5,7 +5,6 @@ import java.util.List;
 
 import data.Database;
 
-/** Library patron aligned with the {@code patrons} table (set {@code id} after insert). */
 public class Patron {
 
     private int id;
@@ -49,9 +48,7 @@ public class Patron {
         return "Patron{id=" + id + ", name='" + name + "', email='" + email + "', type=" + patronType + "}";
     }
 
-    /**
-     * Lines for a "My profile" screen (member id, contact, type, how many books at once).
-     */
+    //basically wraps it into a list so u can just print it out when calling view profile.
     public List<String> profileLines() {
         List<String> lines = new ArrayList<>();
         if (id > 0) {
@@ -64,7 +61,7 @@ public class Patron {
         return lines;
     }
 
-    /** Convenience loader so the class can request its own DB records. */
+    //Convenience loader so the class can request its own DB records.
     public static List<Patron> fetchAllFromDatabase() {
         return Database.getAllPatrons();
     }

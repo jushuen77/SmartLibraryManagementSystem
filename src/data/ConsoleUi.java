@@ -12,9 +12,9 @@ public final class ConsoleUi {
 
     private static final DateTimeFormatter DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    /** Text width between the vertical borders of a menu box. */
+    //Text width between the vertical borders of a menu box. 
     private static final int INNER = 54;
-    /** Terminal width used for centering the whole UI block. */
+    // Terminal width used for centering the whole UI block.
     private static final int TERMINAL_WIDTH = detectTerminalWidth();
 
     private ConsoleUi() {
