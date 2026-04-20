@@ -690,7 +690,7 @@ public class App {
                             ConsoleUi.pauseThenClear(scn);
                             break;
                         }
-                        ConsoleUi.sectionTitle("Your Bookings — Choose One to Cancel");
+                        ConsoleUi.sectionTitle("Your Bookings - Choose One to Cancel");
                         for (int i = 0; i < bookings.size(); i++) {
                             StudyBookingRow b = bookings.get(i);
                             ConsoleUi.numberedLine(i + 1, b.roomName + " | " + ConsoleUi.formatDate(b.bookingDate)
