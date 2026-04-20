@@ -74,10 +74,21 @@ public final class ConsoleUi {
         return leftPad() + "| " + String.format("%-" + INNER + "s", t) + " |";
     }
 
+    // Centered text variant for banner/menu titles only.
+    private static String panelLineCentered(String text) {
+        String t = text == null ? "" : text;
+        if (t.length() > INNER) {
+            t = t.substring(0, INNER - 3) + "...";
+        }
+        int left = Math.max(0, (INNER - t.length()) / 2);
+        int right = Math.max(0, INNER - t.length() - left);
+        return leftPad() + "| " + repeat(' ', left) + t + repeat(' ', right) + " |";
+    }
+
     // Shared bordered title block so all headers match the main menu frame.
     private static void boxedTitle(String title) {
         System.out.println(leftPad() + "+" + hbar() + "+");
-        System.out.println(panelLine(title));
+        System.out.println(panelLineCentered(title));
         System.out.println(leftPad() + "+" + hbar() + "+");
     }
 
@@ -115,8 +126,8 @@ public final class ConsoleUi {
     public static void welcomeBanner() {
         blank();
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
-        System.out.println(panelLine("G4 Smart Library"));
-        System.out.println(panelLine("Catalog, Loans, Fines, Study Rooms, etc."));
+        System.out.println(panelLineCentered("G4 Smart Library"));
+        System.out.println(panelLineCentered("Catalog, Loans, Fines, Study Rooms, etc."));
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
     }
 
@@ -124,7 +135,7 @@ public final class ConsoleUi {
     public static void menuStart(String title) {
         blank();
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
-        System.out.println(panelLine(title));
+        System.out.println(panelLineCentered(title));
         System.out.println(leftPad() + "+" + repeat('-', INNER + 2) + "+");
     }
 
@@ -168,7 +179,7 @@ public final class ConsoleUi {
     //Single-line form field label (keep on same line as user input). 
     public static void fieldPrompt(String label) {
         String prompt = label + ": ";
-        System.out.print(leftPadForWidth(prompt.length()) + prompt);
+        System.out.print(leftPad() + "  " + prompt);
     }
 
     public static void ok(String msg) {
@@ -206,7 +217,7 @@ public final class ConsoleUi {
 
     public static void readerControlsHint() {
         String prompt = "[q]uit: ";
-        System.out.print(leftPadForWidth(prompt.length()) + prompt);
+        System.out.print(leftPad() + "  " + prompt);
     }
 
     // Formats a date for display (dd/mm/yyyy). 
