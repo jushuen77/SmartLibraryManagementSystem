@@ -595,7 +595,15 @@ public class Database {
         String findSql = """
                 SELECT id FROM items
                 WHERE item_type = 'BOOK'
-                  AND replace(replace(upper(isbn), '-', ''), ' ', '') = ?
+                  AND replace(
+                        replace(
+                            replace(
+                                replace(
+                                    replace(upper(isbn), '-', ''),
+                                ' ', ''),
+                            '–', ''),
+                        '—', ''),
+                    '_', '') = ?
                 LIMIT 1
                 """;
         try (Connection conn = getConnection()) {
